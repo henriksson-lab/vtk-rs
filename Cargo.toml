@@ -3,6 +3,8 @@ members = [
     "crates/vtk-types",
     "crates/vtk-data",
     "crates/vtk-io-legacy",
+    "crates/vtk-io-stl",
+    "crates/vtk-io-obj",
     "crates/vtk-filters",
     "crates/vtk-render",
     "crates/vtk-render-wgpu",
@@ -15,6 +17,8 @@ vtk-data = { path = "crates/vtk-data" }
 vtk-filters = { path = "crates/vtk-filters" }
 vtk-render = { path = "crates/vtk-render" }
 vtk-io-legacy = { path = "crates/vtk-io-legacy" }
+vtk-io-stl = { path = "crates/vtk-io-stl" }
+vtk-io-obj = { path = "crates/vtk-io-obj" }
 vtk-render-wgpu = { path = "crates/vtk-render-wgpu" }
 thiserror = "2"
 bytemuck = { version = "1", features = ["derive"] }
@@ -33,6 +37,8 @@ publish = false
 vtk-data = { workspace = true }
 vtk-filters = { workspace = true }
 vtk-io-legacy = { workspace = true }
+vtk-io-stl = { workspace = true }
+vtk-io-obj = { workspace = true }
 vtk-render = { workspace = true }
 vtk-render-wgpu = { workspace = true }
 winit = { workspace = true }
@@ -45,3 +51,11 @@ path = "examples/triangle.rs"
 [[example]]
 name = "shapes"
 path = "examples/shapes.rs"
+
+[[example]]
+name = "isosurface"
+path = "examples/isosurface.rs"
+
+[[example]]
+name = "scalar_colors"
+path = "examples/scalar_colors.rs"

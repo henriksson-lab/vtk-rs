@@ -4,3 +4,6 @@ pub mod triangulate;
 pub mod append;
 pub mod clean;
 pub mod transform;
+pub mod marching_cubes;
+pub mod clip;
+pub mod elevation;

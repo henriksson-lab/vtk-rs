@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use vtk_data::PolyData;
+use vtk_render::Coloring;
 
 /// GPU-ready vertex with position, normal, and color.
 #[repr(C)]
@@ -41,13 +42,13 @@ impl Vertex {
 
 /// Convert PolyData triangles to GPU vertex and index buffers.
 ///
-/// Currently supports only triangle polygons. Each triangle gets a flat normal.
-pub fn poly_data_to_mesh(poly_data: &PolyData, default_color: [f32; 3]) -> (Vec<Vertex>, Vec<u32>) {
+/// Supports solid color and scalar color mapping via the `Coloring` enum.
+pub fn poly_data_to_mesh(poly_data: &PolyData, coloring: &Coloring) -> (Vec<Vertex>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
 
-    // Extract per-vertex colors from point data if available
-    let point_colors = extract_point_colors(poly_data);
+    // Resolve per-vertex colors
+    let point_colors = resolve_colors(poly_data, coloring);
 
     for cell in poly_data.polys.iter() {
         if cell.len() < 3 {
@@ -67,9 +68,9 @@ pub fn poly_data_to_mesh(poly_data: &PolyData, default_color: [f32; 3]) -> (Vec<
 
             let base = vertices.len() as u32;
 
-            let c0 = point_colors.as_ref().map(|c| c[cell[0] as usize]).unwrap_or(default_color);
-            let c1 = point_colors.as_ref().map(|c| c[cell[i] as usize]).unwrap_or(default_color);
-            let c2 = point_colors.as_ref().map(|c| c[cell[i + 1] as usize]).unwrap_or(default_color);
+            let c0 = point_colors[cell[0] as usize];
+            let c1 = point_colors[cell[i] as usize];
+            let c2 = point_colors[cell[i + 1] as usize];
 
             vertices.push(Vertex { position: p0, normal, color: c0 });
             vertices.push(Vertex { position: p1, normal, color: c1 });
@@ -84,22 +85,44 @@ pub fn poly_data_to_mesh(poly_data: &PolyData, default_color: [f32; 3]) -> (Vec<
     (vertices, indices)
 }
 
-fn extract_point_colors(poly_data: &PolyData) -> Option<Vec<[f32; 3]>> {
-    let scalars = poly_data.point_data().scalars()?;
-    let nc = scalars.num_components();
-    let nt = scalars.num_tuples();
+fn resolve_colors(poly_data: &PolyData, coloring: &Coloring) -> Vec<[f32; 3]> {
+    let n = poly_data.points.len();
 
-    if nc < 3 {
-        return None;
-    }
+    match coloring {
+        Coloring::Solid(color) => vec![*color; n],
+        Coloring::ScalarMap { color_map, range } => {
+            // Try to get active scalars from point data
+            let scalars = poly_data.point_data().scalars();
+            let Some(scalars) = scalars else {
+                return vec![[1.0, 1.0, 1.0]; n];
+            };
 
-    let mut colors = Vec::with_capacity(nt);
-    let mut buf = vec![0.0f64; nc];
-    for i in 0..nt {
-        scalars.tuple_as_f64(i, &mut buf);
-        colors.push([buf[0] as f32, buf[1] as f32, buf[2] as f32]);
+            let nt = scalars.num_tuples().min(n);
+
+            // Compute range if not provided
+            let (smin, smax) = if let Some([lo, hi]) = range {
+                (*lo, *hi)
+            } else {
+                let mut lo = f64::INFINITY;
+                let mut hi = f64::NEG_INFINITY;
+                let mut buf = [0.0f64];
+                for i in 0..nt {
+                    scalars.tuple_as_f64(i, &mut buf);
+                    lo = lo.min(buf[0]);
+                    hi = hi.max(buf[0]);
+                }
+                (lo, hi)
+            };
+
+            let mut colors = vec![[1.0f32, 1.0, 1.0]; n];
+            let mut buf = [0.0f64];
+            for (i, color) in colors.iter_mut().enumerate().take(nt) {
+                scalars.tuple_as_f64(i, &mut buf);
+                *color = color_map.map_value(buf[0], smin, smax);
+            }
+            colors
+        }
     }
-    Some(colors)
 }
 
 fn get_point(pd: &PolyData, idx: usize) -> [f32; 3] {

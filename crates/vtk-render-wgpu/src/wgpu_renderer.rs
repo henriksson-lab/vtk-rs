@@ -185,7 +185,7 @@ impl WgpuRenderer {
         let mut gpu_meshes = Vec::new();
 
         for actor in &scene.actors {
-            let (vertices, indices) = mesh::poly_data_to_mesh(&actor.data, actor.color);
+            let (vertices, indices) = mesh::poly_data_to_mesh(&actor.data, &actor.coloring);
             if indices.is_empty() {
                 continue;
             }

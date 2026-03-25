@@ -1,6 +1,6 @@
 use vtk_data::PolyData;
 
-use crate::Camera;
+use crate::{Camera, ColorMap};
 
 /// How to render the surface.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -11,11 +11,30 @@ pub enum Representation {
     Points,
 }
 
+/// How to determine vertex colors.
+#[derive(Debug, Clone)]
+pub enum Coloring {
+    /// Uniform color for the entire actor.
+    Solid([f32; 3]),
+    /// Map active scalars from point data through a color map.
+    ScalarMap {
+        color_map: ColorMap,
+        /// Scalar range [min, max]. If None, auto-computed from data.
+        range: Option<[f64; 2]>,
+    },
+}
+
+impl Default for Coloring {
+    fn default() -> Self {
+        Coloring::Solid([1.0, 1.0, 1.0])
+    }
+}
+
 /// A renderable entity in the scene.
 #[derive(Debug, Clone)]
 pub struct Actor {
     pub data: PolyData,
-    pub color: [f32; 3],
+    pub coloring: Coloring,
     pub opacity: f32,
     pub representation: Representation,
 }
@@ -24,14 +43,19 @@ impl Actor {
     pub fn new(data: PolyData) -> Self {
         Self {
             data,
-            color: [1.0, 1.0, 1.0],
+            coloring: Coloring::default(),
             opacity: 1.0,
             representation: Representation::Surface,
         }
     }
 
     pub fn with_color(mut self, r: f32, g: f32, b: f32) -> Self {
-        self.color = [r, g, b];
+        self.coloring = Coloring::Solid([r, g, b]);
+        self
+    }
+
+    pub fn with_scalar_coloring(mut self, color_map: ColorMap, range: Option<[f64; 2]>) -> Self {
+        self.coloring = Coloring::ScalarMap { color_map, range };
         self
     }
 }
