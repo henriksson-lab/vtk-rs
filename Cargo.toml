@@ -3,6 +3,7 @@ members = [
     "crates/vtk-types",
     "crates/vtk-data",
     "crates/vtk-io-legacy",
+    "crates/vtk-filters",
     "crates/vtk-render",
     "crates/vtk-render-wgpu",
 ]
@@ -11,6 +12,7 @@ resolver = "2"
 [workspace.dependencies]
 vtk-types = { path = "crates/vtk-types" }
 vtk-data = { path = "crates/vtk-data" }
+vtk-filters = { path = "crates/vtk-filters" }
 vtk-render = { path = "crates/vtk-render" }
 vtk-io-legacy = { path = "crates/vtk-io-legacy" }
 vtk-render-wgpu = { path = "crates/vtk-render-wgpu" }
@@ -29,6 +31,7 @@ publish = false
 
 [dependencies]
 vtk-data = { workspace = true }
+vtk-filters = { workspace = true }
 vtk-io-legacy = { workspace = true }
 vtk-render = { workspace = true }
 vtk-render-wgpu = { workspace = true }
@@ -38,3 +41,7 @@ pollster = { workspace = true }
 [[example]]
 name = "triangle"
 path = "examples/triangle.rs"
+
+[[example]]
+name = "shapes"
+path = "examples/shapes.rs"
