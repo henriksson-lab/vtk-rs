@@ -8,6 +8,8 @@ members = [
     "crates/vtk-filters",
     "crates/vtk-render",
     "crates/vtk-render-wgpu",
+    "crates/vtk-io-xml",
+    "crates/vtk-io-ply",
 ]
 resolver = "2"
 
@@ -20,6 +22,8 @@ vtk-io-legacy = { path = "crates/vtk-io-legacy" }
 vtk-io-stl = { path = "crates/vtk-io-stl" }
 vtk-io-obj = { path = "crates/vtk-io-obj" }
 vtk-render-wgpu = { path = "crates/vtk-render-wgpu" }
+vtk-io-xml = { path = "crates/vtk-io-xml" }
+vtk-io-ply = { path = "crates/vtk-io-ply" }
 thiserror = "2"
 bytemuck = { version = "1", features = ["derive"] }
 glam = "0.29"

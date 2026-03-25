@@ -42,39 +42,40 @@ impl Vertex {
 
 /// Convert PolyData triangles to GPU vertex and index buffers.
 ///
+/// Uses smooth normals from point data if available, otherwise computes flat normals.
 /// Supports solid color and scalar color mapping via the `Coloring` enum.
 pub fn poly_data_to_mesh(poly_data: &PolyData, coloring: &Coloring) -> (Vec<Vertex>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
 
-    // Resolve per-vertex colors
     let point_colors = resolve_colors(poly_data, coloring);
+    let point_normals = extract_point_normals(poly_data);
 
     for cell in poly_data.polys.iter() {
         if cell.len() < 3 {
             continue;
         }
 
-        // Fan triangulation for polygons with > 3 vertices
         let p0 = get_point(poly_data, cell[0] as usize);
         for i in 1..cell.len() - 1 {
             let p1 = get_point(poly_data, cell[i] as usize);
             let p2 = get_point(poly_data, cell[i + 1] as usize);
 
-            // Flat normal
-            let e1 = sub(p1, p0);
-            let e2 = sub(p2, p0);
-            let normal = normalize(cross(e1, e2));
+            // Use smooth normals if available, otherwise flat
+            let (n0, n1, n2) = if let Some(ref pn) = point_normals {
+                (pn[cell[0] as usize], pn[cell[i] as usize], pn[cell[i + 1] as usize])
+            } else {
+                let e1 = sub(p1, p0);
+                let e2 = sub(p2, p0);
+                let flat = normalize(cross(e1, e2));
+                (flat, flat, flat)
+            };
 
             let base = vertices.len() as u32;
 
-            let c0 = point_colors[cell[0] as usize];
-            let c1 = point_colors[cell[i] as usize];
-            let c2 = point_colors[cell[i + 1] as usize];
-
-            vertices.push(Vertex { position: p0, normal, color: c0 });
-            vertices.push(Vertex { position: p1, normal, color: c1 });
-            vertices.push(Vertex { position: p2, normal, color: c2 });
+            vertices.push(Vertex { position: p0, normal: n0, color: point_colors[cell[0] as usize] });
+            vertices.push(Vertex { position: p1, normal: n1, color: point_colors[cell[i] as usize] });
+            vertices.push(Vertex { position: p2, normal: n2, color: point_colors[cell[i + 1] as usize] });
 
             indices.push(base);
             indices.push(base + 1);
@@ -83,6 +84,21 @@ pub fn poly_data_to_mesh(poly_data: &PolyData, coloring: &Coloring) -> (Vec<Vert
     }
 
     (vertices, indices)
+}
+
+fn extract_point_normals(poly_data: &PolyData) -> Option<Vec<[f32; 3]>> {
+    let normals = poly_data.point_data().normals()?;
+    if normals.num_components() != 3 {
+        return None;
+    }
+    let nt = normals.num_tuples();
+    let mut result = Vec::with_capacity(nt);
+    let mut buf = [0.0f64; 3];
+    for i in 0..nt {
+        normals.tuple_as_f64(i, &mut buf);
+        result.push([buf[0] as f32, buf[1] as f32, buf[2] as f32]);
+    }
+    Some(result)
 }
 
 fn resolve_colors(poly_data: &PolyData, coloring: &Coloring) -> Vec<[f32; 3]> {
