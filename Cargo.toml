@@ -1,0 +1,40 @@
+[workspace]
+members = [
+    "crates/vtk-types",
+    "crates/vtk-data",
+    "crates/vtk-io-legacy",
+    "crates/vtk-render",
+    "crates/vtk-render-wgpu",
+]
+resolver = "2"
+
+[workspace.dependencies]
+vtk-types = { path = "crates/vtk-types" }
+vtk-data = { path = "crates/vtk-data" }
+vtk-render = { path = "crates/vtk-render" }
+vtk-io-legacy = { path = "crates/vtk-io-legacy" }
+vtk-render-wgpu = { path = "crates/vtk-render-wgpu" }
+thiserror = "2"
+bytemuck = { version = "1", features = ["derive"] }
+glam = "0.29"
+wgpu = "24"
+winit = "0.30"
+pollster = "0.4"
+
+[package]
+name = "vtk-rs-examples"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+vtk-data = { workspace = true }
+vtk-io-legacy = { workspace = true }
+vtk-render = { workspace = true }
+vtk-render-wgpu = { workspace = true }
+winit = { workspace = true }
+pollster = { workspace = true }
+
+[[example]]
+name = "triangle"
+path = "examples/triangle.rs"

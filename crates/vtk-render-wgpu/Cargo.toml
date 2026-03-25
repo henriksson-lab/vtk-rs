@@ -1,0 +1,13 @@
+[package]
+name = "vtk-render-wgpu"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vtk-types = { workspace = true }
+vtk-data = { workspace = true }
+vtk-render = { workspace = true }
+bytemuck = { workspace = true }
+glam = { workspace = true }
+wgpu = { workspace = true }
+winit = { workspace = true }
