@@ -13,3 +13,7 @@ pub mod smooth;
 pub mod subdivide;
 pub mod warp;
 pub mod connectivity;
+pub mod extract_surface;
+pub mod slice;
+pub mod glyph;
+pub mod tube;
