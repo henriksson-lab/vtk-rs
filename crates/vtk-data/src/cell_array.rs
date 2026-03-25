@@ -4,10 +4,16 @@
 /// and a connectivity array containing the point indices for all cells concatenated.
 ///
 /// For cell `i`, the point indices are `connectivity[offsets[i]..offsets[i+1]]`.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CellArray {
     offsets: Vec<i64>,
     connectivity: Vec<i64>,
+}
+
+impl Default for CellArray {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CellArray {
