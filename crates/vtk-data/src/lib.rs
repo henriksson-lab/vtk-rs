@@ -14,6 +14,7 @@ mod table;
 pub mod kd_tree;
 pub mod octree;
 mod selection;
+pub mod cell_locator;
 
 pub use data_array::{DataArray, AnyDataArray};
 pub use cell_array::CellArray;
@@ -31,3 +32,4 @@ pub use table::Table;
 pub use kd_tree::KdTree;
 pub use selection::{Selection, SelectionNode, SelectionContentType, SelectionFieldType};
 pub use octree::OctreePointLocator;
+pub use cell_locator::CellLocator;

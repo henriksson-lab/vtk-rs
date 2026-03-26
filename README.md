@@ -37,7 +37,7 @@ writer.write_poly_data("sphere.vtk".as_ref(), &sphere).unwrap();
 
 | Crate | Description |
 |-------|-------------|
-| **vtk-filters** | 17 geometry sources + 65 processing filters (see [Filters](#filters) below) |
+| **vtk-filters** | 17 geometry sources + 76 processing filters (see [Filters](#filters) below) |
 
 ### I/O
 
@@ -60,7 +60,7 @@ writer.write_poly_data("sphere.vtk".as_ref(), &sphere).unwrap();
 
 ```bash
 cargo build                              # build all crates
-cargo test --workspace                   # run all tests (296 tests)
+cargo test --workspace                   # run all tests (324 tests)
 cargo clippy --workspace -- -D warnings  # lint
 ```
 
@@ -94,7 +94,7 @@ Traits `DataObject` and `DataSet` replace VTK's class hierarchy.
 
 **Sources:** `sphere`, `cube`, `cone`, `cylinder`, `plane`, `arrow`, `disk`, `line`, `point_source`, `regular_polygon`, `arc`, `superquadric`, `platonic_solid`, `frustum`, `parametric_function`, `bounding_box_source`, `axes`
 
-**Processing filters (65):**
+**Processing filters (76):**
 
 | Filter | Description |
 |--------|-------------|
@@ -164,6 +164,17 @@ Traits `DataObject` and `DataSet` replace VTK's class hierarchy.
 | `subdivide_midpoint` | Midpoint subdivision (triangles/quads) |
 | `random_attributes` | Generate random scalar/vector data |
 | `image_to_poly_data` | Convert ImageData surface to PolyData |
+| `flying_edges` | Flying Edges 3D — efficient scanline marching cubes |
+| `hausdorff` | Hausdorff distance between point sets |
+| `color_transfer` | Piecewise-linear color transfer function |
+| `extrude_normals` | Extrude surface along vertex normals |
+| `cell_normals` | Per-cell face normals as cell data |
+| `merge_points` | Tolerance-based coincident point merging |
+| `bounding_box_filter` | Per-cell bounding boxes as cell data |
+| `data_array_math` | Array arithmetic (add, subtract, scale, magnitude) |
+| `edge_lengths` | Min/max/mean edge lengths per cell |
+| `extract_region` | Extract sub-region of ImageData |
+| `warp_implicit` | Warp points along implicit function gradient |
 
 All filters are plain functions — no pipeline system required:
 

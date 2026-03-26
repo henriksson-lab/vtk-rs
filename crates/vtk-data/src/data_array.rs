@@ -130,6 +130,21 @@ impl AnyDataArray {
         }
     }
 
+    pub fn set_name(&mut self, name: &str) {
+        match self {
+            AnyDataArray::F32(a) => a.set_name(name),
+            AnyDataArray::F64(a) => a.set_name(name),
+            AnyDataArray::I8(a) => a.set_name(name),
+            AnyDataArray::I16(a) => a.set_name(name),
+            AnyDataArray::I32(a) => a.set_name(name),
+            AnyDataArray::I64(a) => a.set_name(name),
+            AnyDataArray::U8(a) => a.set_name(name),
+            AnyDataArray::U16(a) => a.set_name(name),
+            AnyDataArray::U32(a) => a.set_name(name),
+            AnyDataArray::U64(a) => a.set_name(name),
+        }
+    }
+
     pub fn scalar_type(&self) -> ScalarType {
         match self {
             AnyDataArray::F32(_) => ScalarType::F32,

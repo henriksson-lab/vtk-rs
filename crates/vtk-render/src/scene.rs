@@ -1,6 +1,6 @@
 use vtk_data::PolyData;
 
-use crate::{Camera, ColorMap};
+use crate::{Camera, ColorMap, Light, Material};
 
 /// How to render the surface.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -37,6 +37,7 @@ pub struct Actor {
     pub coloring: Coloring,
     pub opacity: f32,
     pub representation: Representation,
+    pub material: Material,
 }
 
 impl Actor {
@@ -46,6 +47,7 @@ impl Actor {
             coloring: Coloring::default(),
             opacity: 1.0,
             representation: Representation::Surface,
+            material: Material::default(),
         }
     }
 
@@ -60,10 +62,11 @@ impl Actor {
     }
 }
 
-/// A 3D scene containing actors, a camera, and background color.
+/// A 3D scene containing actors, lights, a camera, and background color.
 #[derive(Debug, Clone)]
 pub struct Scene {
     pub actors: Vec<Actor>,
+    pub lights: Vec<Light>,
     pub camera: Camera,
     pub background: [f32; 4],
 }
@@ -72,6 +75,7 @@ impl Default for Scene {
     fn default() -> Self {
         Self {
             actors: Vec::new(),
+            lights: vec![Light::headlight()],
             camera: Camera::default(),
             background: [0.1, 0.1, 0.1, 1.0],
         }
@@ -85,5 +89,14 @@ impl Scene {
 
     pub fn add_actor(&mut self, actor: Actor) {
         self.actors.push(actor);
+    }
+
+    pub fn add_light(&mut self, light: Light) {
+        self.lights.push(light);
+    }
+
+    /// Remove all lights and start fresh.
+    pub fn clear_lights(&mut self) {
+        self.lights.clear();
     }
 }

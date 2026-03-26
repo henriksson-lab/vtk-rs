@@ -183,7 +183,7 @@ const EDGE_VERTICES: [(usize, usize); 12] = [
 // Marching cubes edge table: for each of 256 cube configurations,
 // which edges are intersected (12-bit flags).
 #[rustfmt::skip]
-const EDGE_TABLE: [u16; 256] = [
+pub(crate) const EDGE_TABLE: [u16; 256] = [
     0x000, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
     0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
     0x190, 0x099, 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -221,7 +221,7 @@ const EDGE_TABLE: [u16; 256] = [
 // Marching cubes triangle table: for each of 256 cube configurations,
 // up to 5 triangles as sequences of edge indices, terminated by -1.
 #[rustfmt::skip]
-const TRI_TABLE: [[i8; 16]; 256] = [
+pub(crate) const TRI_TABLE: [[i8; 16]; 256] = [
     [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
     [ 0, 8, 3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
     [ 0, 1, 9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
