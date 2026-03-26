@@ -37,14 +37,14 @@ writer.write_poly_data("sphere.vtk".as_ref(), &sphere).unwrap();
 
 | Crate | Description |
 |-------|-------------|
-| **vtk-filters** | 11 geometry sources + 34 processing filters (see [Filters](#filters) below) |
+| **vtk-filters** | 17 geometry sources + 65 processing filters (see [Filters](#filters) below) |
 
 ### I/O
 
 | Crate | Formats | Read | Write |
 |-------|---------|:----:|:-----:|
 | **vtk-io-legacy** | VTK legacy `.vtk` (PolyData + ImageData + UnstructuredGrid), ASCII & binary | yes | yes |
-| **vtk-io-xml** | VTK XML `.vtp` / `.vtu` / `.vti` (PolyData, UnstructuredGrid, ImageData), ASCII | yes | yes |
+| **vtk-io-xml** | VTK XML `.vtp` / `.vtu` / `.vti` / `.vtr` / `.vts`, ASCII | yes | yes |
 | **vtk-io-stl** | STL `.stl`, ASCII & binary | yes | yes |
 | **vtk-io-obj** | Wavefront `.obj` | yes | yes |
 | **vtk-io-ply** | Stanford PLY `.ply`, ASCII & binary | yes | yes |
@@ -60,7 +60,7 @@ writer.write_poly_data("sphere.vtk".as_ref(), &sphere).unwrap();
 
 ```bash
 cargo build                              # build all crates
-cargo test --workspace                   # run all tests (174 tests)
+cargo test --workspace                   # run all tests (296 tests)
 cargo clippy --workspace -- -D warnings  # lint
 ```
 
@@ -92,9 +92,9 @@ Traits `DataObject` and `DataSet` replace VTK's class hierarchy.
 
 ## Filters
 
-**Sources:** `sphere`, `cube`, `cone`, `cylinder`, `plane`, `arrow`, `disk`, `line`, `point_source`, `regular_polygon`, `arc`
+**Sources:** `sphere`, `cube`, `cone`, `cylinder`, `plane`, `arrow`, `disk`, `line`, `point_source`, `regular_polygon`, `arc`, `superquadric`, `platonic_solid`, `frustum`, `parametric_function`, `bounding_box_source`, `axes`
 
-**Processing filters (34):**
+**Processing filters (65):**
 
 | Filter | Description |
 |--------|-------------|
@@ -133,6 +133,37 @@ Traits `DataObject` and `DataSet` replace VTK's class hierarchy.
 | `texture_map` | Generate texture coords (plane projection or spherical mapping) |
 | `glyph` | Place scaled copies of a mesh at each input point |
 | `tube` | Generate tubes with caps around line cells |
+| `delaunay_2d` | 2D Delaunay triangulation (Bowyer-Watson) |
+| `spline` | Catmull-Rom spline interpolation along polylines |
+| `clip_data_set` | Clip UnstructuredGrid by plane |
+| `windowed_sinc_smooth` | Low-pass windowed sinc mesh smoothing |
+| `probe` | Interpolate source data at probe points |
+| `stream_tracer` | RK4 streamline integration through vector fields |
+| `voxel_modeller` | Convert PolyData to binary voxel ImageData |
+| `sample_function` | Evaluate scalar function on ImageData grid |
+| `integrate_attributes` | Integrate point data over surface area |
+| `distance_poly_data` | Minimum distance from target points to source surface |
+| `implicit_modeller` | Distance field from PolyData on ImageData grid |
+| `tensor_glyph` | Place tensor-transformed glyphs at input points |
+| `resample` | Resample source PolyData onto target ImageData grid |
+| `calculator` | Expression-based scalar/vector field computation |
+| `select_enclosed_points` | Ray-casting inside/outside classification |
+| `extract_cells` | Extract cells by index or predicate |
+| `icp` | Iterative Closest Point rigid registration |
+| `extract_points` | Extract points by index or scalar range |
+| `signed_distance` | Signed distance field from closed surface |
+| `cell_size` | Compute area/length of polygon/line cells |
+| `extrude` | Linear extrusion of 2D geometry along a direction |
+| `cell_quality` | Aspect ratio, min/max angle, area quality metrics |
+| `reverse_sense` | Flip polygon winding and normals |
+| `strip` | Convert triangles to triangle strips |
+| `interpolate` | Inverse distance weighting interpolation |
+| `fill_holes` | Close open boundary loops with fan triangulation |
+| `center_of_mass` | Point and area-weighted center of mass |
+| `project_points` | Project points onto nearest surface location |
+| `subdivide_midpoint` | Midpoint subdivision (triangles/quads) |
+| `random_attributes` | Generate random scalar/vector data |
+| `image_to_poly_data` | Convert ImageData surface to PolyData |
 
 All filters are plain functions — no pipeline system required:
 

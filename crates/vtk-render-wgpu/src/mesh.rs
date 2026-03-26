@@ -101,6 +101,11 @@ fn extract_point_normals(poly_data: &PolyData) -> Option<Vec<[f32; 3]>> {
     Some(result)
 }
 
+/// Resolve per-vertex colors for a PolyData based on the Coloring mode.
+pub fn resolve_colors_pub(poly_data: &PolyData, coloring: &Coloring) -> Vec<[f32; 3]> {
+    resolve_colors(poly_data, coloring)
+}
+
 fn resolve_colors(poly_data: &PolyData, coloring: &Coloring) -> Vec<[f32; 3]> {
     let n = poly_data.points.len();
 

@@ -23,12 +23,12 @@ cargo run --example scalar_colors    # elevation-colored sphere/cone/plane with 
 ```
 crates/
   vtk-types/       # Scalar trait, ScalarType enum, CellType, VtkError, BoundingBox
-  vtk-data/        # DataArray, CellArray, Points, FieldData, DataSetAttributes, PolyData, ImageData, UnstructuredGrid
+  vtk-data/        # DataArray, CellArray, Points, FieldData, DataSetAttributes, PolyData, ImageData, UnstructuredGrid, RectilinearGrid, StructuredGrid, MultiBlockDataSet, Table, KdTree, Selection
   vtk-filters/     # Sources and filters — see below
   vtk-io-legacy/   # VTK legacy format (.vtk) ASCII/binary reader and writer
   vtk-io-stl/      # STL format ASCII/binary reader and writer
   vtk-io-obj/      # Wavefront OBJ format reader and writer
-  vtk-io-xml/      # VTK XML format reader and writer (.vtp, .vtu, .vti)
+  vtk-io-xml/      # VTK XML format reader and writer (.vtp, .vtu, .vti, .vtr, .vts)
   vtk-io-ply/      # Stanford PLY format ASCII and binary reader and writer
   vtk-render/      # Backend-agnostic: Camera, Scene, Actor, Renderer trait, ColorMap
   vtk-render-wgpu/ # wgpu implementation of the Renderer trait
@@ -44,8 +44,8 @@ VTK/               # C++ 9.6.0 reference source (read-only)
 
 ### vtk-filters modules
 
-**Sources:** sphere, cube, cone, cylinder, plane, arrow, disk, line, point_source, regular_polygon, arc
-**Filters:** normals, triangulate, append, clean, transform, marching_cubes, clip, elevation, threshold, decimate, smooth, subdivide, warp, connectivity, extract_surface, slice, glyph, tube, feature_edges, reflect, shrink, contour, cell_centers, extract_edges, orient, attribute_convert, generate_ids, mask_points, curvatures, gradient, mass_properties, densify, hull, texture_map
+**Sources:** sphere, cube, cone, cylinder, plane, arrow, disk, line, point_source, regular_polygon, arc, superquadric, platonic_solid, frustum, parametric_function, bounding_box_source, axes
+**Filters:** normals, triangulate, append, clean, transform, marching_cubes, clip, elevation, threshold, decimate, smooth, subdivide, warp, connectivity, extract_surface, slice, glyph, tube, feature_edges, reflect, shrink, contour, cell_centers, extract_edges, orient, attribute_convert, generate_ids, mask_points, curvatures, gradient, mass_properties, densify, hull, texture_map, delaunay_2d, spline, clip_data_set, windowed_sinc_smooth, probe, stream_tracer, voxel_modeller, sample_function, integrate_attributes, distance_poly_data, implicit_modeller, tensor_glyph, resample, calculator, select_enclosed_points, extract_cells, icp, extract_points, signed_distance, cell_size, extrude, cell_quality, reverse_sense, strip, interpolate, fill_holes, center_of_mass, project_points, subdivide_midpoint, random_attributes, image_to_poly_data
 
 `vtk-io-legacy` also supports ImageData (STRUCTURED_POINTS) and UnstructuredGrid read/write via `write_image_data` / `read_image_data` and `write_unstructured_grid` / `read_unstructured_grid`.
 

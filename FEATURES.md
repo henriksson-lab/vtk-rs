@@ -2,7 +2,7 @@
 
 Feature tracking for vtk-rs — a pure Rust reimplementation of VTK.
 
-Last updated: 2026-03-25 | Tests: 174 | Clippy: clean
+Last updated: 2026-03-26 | Tests: 296 | Clippy: clean
 
 ---
 
@@ -20,6 +20,8 @@ Last updated: 2026-03-25 | Tests: 174 | Clippy: clean
 - [x] `PolyData` — 4 cell arrays (verts/lines/polys/strips) + point/cell data
 - [x] `ImageData` — regular grid with extent/spacing/origin
 - [x] `UnstructuredGrid` — mixed-cell mesh with explicit connectivity + cell types
+- [x] `RectilinearGrid` — axis-aligned grid with non-uniform per-axis coordinate arrays
+- [x] `StructuredGrid` — curvilinear grid with explicit points and structured i×j×k topology
 - [x] `BoundingBox`
 - [x] `Scalar` trait + `ScalarType` enum (10 types: f32, f64, i8–u64)
 - [x] `CellType` enum — all VTK linear + quadratic cell types
@@ -27,22 +29,22 @@ Last updated: 2026-03-25 | Tests: 174 | Clippy: clean
 
 ### Not Yet Implemented
 
-- [ ] `StructuredGrid` — curvilinear grid with explicit points
-- [ ] `RectilinearGrid` — axis-aligned grid with per-axis coordinate arrays
-- [ ] `Table` — columnar data (rows × named columns)
+- [x] `Table` — columnar data (rows × named columns)
 - [ ] `Graph` / `Tree` — graph data structures
-- [ ] `MultiBlockDataSet` / `PartitionedDataSet` — composite datasets
+- [x] `MultiBlockDataSet` — composite dataset with named heterogeneous blocks
 - [ ] `HyperTreeGrid` — AMR-style hierarchical grids
 - [ ] `ExplicitStructuredGrid`
-- [ ] `Selection` / `SelectionNode`
-- [ ] Implicit functions (`Plane`, `Sphere`, `Box` as evaluatable objects)
-- [ ] Spatial locators (`KdTree`, `OctreePointLocator`, `CellLocator`)
+- [x] `Selection` / `SelectionNode` — content types: Indices, Thresholds, GlobalIds, Frustum, Blocks
+- [x] Implicit functions (`ImplicitPlane`, `ImplicitSphere`, `ImplicitBox` + `ImplicitFunction` trait)
+- [x] `KdTree` — k-d tree for nearest-neighbor, k-NN, and radius queries
+- [x] `OctreePointLocator` — octree for nearest-neighbor and radius queries
+- [ ] Spatial locators (`CellLocator`)
 - [ ] Higher-order / Lagrange / Bezier cell support
 - [ ] `Molecule` data type
 
 ---
 
-## Geometry Sources (11 / ~40 in VTK)
+## Geometry Sources (17 / ~40 in VTK)
 
 ### Implemented
 
@@ -57,18 +59,21 @@ Last updated: 2026-03-25 | Tests: 174 | Clippy: clean
 - [x] `point_source` — random point cloud within a sphere (rejection sampling)
 - [x] `regular_polygon` — regular N-gon with optional outline-only mode
 - [x] `arc` — circular arc as a polyline with configurable angles and normal
+- [x] `superquadric` — superellipsoid with configurable roundness exponents
+- [x] `platonic_solid` — tetrahedron, octahedron, icosahedron, dodecahedron
+- [x] `frustum` — truncated cone/pyramid with configurable radii and caps
+
+- [x] `parametric_function` — evaluate parametric surfaces (+ torus, Klein bottle helpers)
+- [x] `bounding_box_source` — wireframe bounding box from bounds or PolyData
+- [x] `axes` — XYZ axis triad with optional arrowhead cones
 
 ### Not Yet Implemented
 
-- [ ] `superquadric` — superellipsoid source
-- [ ] `platonic_solid` — tetrahedron, octahedron, icosahedron, dodecahedron
-- [ ] `frustum` — truncated pyramid
-- [ ] `parametric_function` — evaluate parametric surfaces
 - [ ] `text` — 2D/3D text geometry
 
 ---
 
-## Processing Filters (34 / ~300+ in VTK)
+## Processing Filters (65 / ~300+ in VTK)
 
 ### Implemented
 
@@ -109,34 +114,51 @@ Last updated: 2026-03-25 | Tests: 174 | Clippy: clean
 | `texture_map` | Generate texture coords by plane projection or spherical mapping |
 | `glyph` | Place scaled mesh copies at input points |
 | `tube` | Generate tubes with caps around line cells |
+| `delaunay_2d` | 2D Delaunay triangulation (Bowyer-Watson algorithm) |
+| `spline` | Catmull-Rom spline interpolation along polylines |
+| `clip_data_set` | Clip UnstructuredGrid by plane (whole-cell removal) |
+| `windowed_sinc_smooth` | Low-pass windowed sinc smoothing (Taubin method) |
+| `probe` | Interpolate source data at probe points (nearest-neighbor) |
+| `stream_tracer` | RK4 streamline integration through vector fields |
+| `voxel_modeller` | Convert PolyData surface to binary voxel ImageData |
+| `sample_function` | Evaluate scalar function on ImageData grid |
+| `integrate_attributes` | Integrate point data over surface (area-weighted) |
+| `distance_poly_data` | Minimum distance from target points to source surface |
+| `implicit_modeller` | Distance field from PolyData surface on ImageData grid |
+| `tensor_glyph` | Place tensor-transformed ellipsoid glyphs at input points |
+| `resample` | Resample source PolyData onto target ImageData grid |
+| `calculator` | Expression-based scalar/vector field computation |
+| `select_enclosed_points` | Ray-casting inside/outside classification |
+| `extract_cells` | Extract cells by index or predicate |
+| `icp` | Iterative Closest Point rigid registration (SVD-based) |
+| `extract_points` | Extract points by index or scalar range |
+| `signed_distance` | Signed distance field from closed surface |
+| `cell_size` | Compute area/length of polygon/line cells |
+| `extrude` | Linear extrusion of 2D geometry along a direction |
+| `cell_quality` | Aspect ratio, min/max angle, area metrics per cell |
+| `reverse_sense` | Flip polygon winding and normals |
+| `strip` | Convert triangles to triangle strips (greedy) |
+| `interpolate` | Inverse distance weighting interpolation |
+| `fill_holes` | Close open boundary loops with fan triangulation |
+| `center_of_mass` | Point and area-weighted center of mass |
+| `project_points` | Project points onto nearest surface location |
+| `subdivide_midpoint` | Midpoint subdivision (triangles → 4, quads → 4) |
+| `random_attributes` | Generate random scalar/vector point and cell data |
+| `image_to_poly_data` | Convert ImageData surface to PolyData quads |
 
 ### High-Priority — Not Yet Implemented
 
-- [ ] `delaunay_2d` — 2D Delaunay triangulation
 - [ ] `delaunay_3d` — 3D Delaunay tetrahedralization
 - [ ] `boolean` — Boolean operations on PolyData (union, intersection, difference)
-- [ ] `probe` — Interpolate source data at probe point locations
-- [ ] `stream_tracer` — Streamline integration through vector fields
-- [ ] `windowed_sinc_smooth` — Windowed sinc smoothing (better than Laplacian)
-- [ ] `distance_poly_data` — Signed distance between two meshes
-- [ ] `spline` — Fit splines through points
 - [ ] `flying_edges_3d` — Parallelizable marching cubes variant
-- [ ] `clip_data_set` — Clip UnstructuredGrid (not just PolyData)
 
 ### Lower-Priority — Not Yet Implemented
 
-- [ ] `resample_with_dataset` — Resample one dataset onto another
-- [ ] `integrate_attributes` — Integrate field data over cells
-- [ ] `texture_map_to_plane` / `texture_map_to_sphere` — Texture coordinate generation
-- [ ] `voxel_modeller` — Convert PolyData to ImageData
-- [ ] `implicit_modeller` — Distance field from PolyData
-- [ ] `sample_function` — Evaluate implicit function on grid
 - [ ] `temporal_interpolator` — Interpolate between time steps
-- [ ] `tensor_glyph` — Visualize tensor fields with ellipsoids
 
 ---
 
-## I/O Formats (8 / ~60+ in VTK)
+## I/O Formats (11 / ~60+ in VTK)
 
 ### Implemented
 
@@ -146,16 +168,16 @@ Last updated: 2026-03-25 | Tests: 174 | Clippy: clean
 | VTK XML `.vtp` | vtk-io-xml | yes | yes | PolyData, ASCII only |
 | VTK XML `.vtu` | vtk-io-xml | yes | yes | UnstructuredGrid, ASCII only |
 | VTK XML `.vti` | vtk-io-xml | yes | yes | ImageData, ASCII only |
+| VTK XML `.vtr` | vtk-io-xml | yes | yes | RectilinearGrid, ASCII only |
+| VTK XML `.vts` | vtk-io-xml | yes | yes | StructuredGrid, ASCII only |
 | STL `.stl` | vtk-io-stl | yes | yes | ASCII & binary |
 | Wavefront `.obj` | vtk-io-obj | yes | yes | Vertices, normals, texture coords, faces |
 | Stanford PLY `.ply` | vtk-io-ply | yes | yes | ASCII & binary little-endian |
+| VTK XML `.vtm` | vtk-io-xml | | yes | MultiBlock index file (write only) |
 
 ### High-Priority — Not Yet Implemented
 
 - [ ] VTK XML binary/appended — Binary and appended-data modes for `.vtp`/`.vtu`/`.vti`
-- [ ] VTK XML `.vtr` — RectilinearGrid XML format
-- [ ] VTK XML `.vts` — StructuredGrid XML format
-- [ ] VTK XML `.vtm` — MultiBlock XML format
 - [ ] VTP binary/appended — Binary and appended-data modes for `.vtp`
 - [ ] glTF `.gltf` / `.glb` — For interchange with 3D tools and web viewers
 
@@ -214,7 +236,7 @@ Last updated: 2026-03-25 | Tests: 174 | Clippy: clean
 
 - [x] Workspace with 12 crates
 - [x] 4 interactive examples (triangle, shapes, isosurface, scalar_colors)
-- [x] 174 unit tests
+- [x] 296 unit tests
 - [x] Clippy-clean (`-D warnings`)
 
 ### Not Yet Implemented
