@@ -109,6 +109,18 @@ impl Light {
     }
 }
 
+impl std::fmt::Display for Light {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let lt = match self.light_type {
+            LightType::Directional => "Directional",
+            LightType::Point => "Point",
+            LightType::Spot { .. } => "Spot",
+            LightType::Ambient => "Ambient",
+        };
+        write!(f, "Light({}, intensity={:.1})", lt, self.intensity)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,5 +169,13 @@ mod tests {
         let l = Light::ambient([0.2, 0.2, 0.2], 0.5);
         assert_eq!(l.light_type, LightType::Ambient);
         assert_eq!(l.intensity, 0.5);
+    }
+
+    #[test]
+    fn display() {
+        let l = Light::directional([0.0, -1.0, 0.0], [1.0, 1.0, 1.0], 0.8);
+        let s = format!("{l}");
+        assert!(s.contains("Directional"));
+        assert!(s.contains("0.8"));
     }
 }

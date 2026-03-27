@@ -109,6 +109,33 @@ impl RectilinearGrid {
     pub fn cell_data_mut(&mut self) -> &mut DataSetAttributes {
         &mut self.cell_data
     }
+
+    /// Create a uniform RectilinearGrid with n points and spacing in each direction.
+    pub fn uniform(nx: usize, ny: usize, nz: usize, spacing: f64) -> Self {
+        Self::from_coords(
+            (0..nx).map(|i| i as f64 * spacing).collect(),
+            (0..ny).map(|i| i as f64 * spacing).collect(),
+            (0..nz).map(|i| i as f64 * spacing).collect(),
+        )
+    }
+
+    /// Builder: add a point data array.
+    pub fn with_point_array(mut self, array: crate::AnyDataArray) -> Self {
+        let name = array.name().to_string();
+        self.point_data.add_array(array);
+        if self.point_data.scalars().is_none() {
+            self.point_data.set_active_scalars(&name);
+        }
+        self
+    }
+}
+
+impl std::fmt::Display for RectilinearGrid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let d = self.dimensions();
+        write!(f, "RectilinearGrid: {}x{}x{}, {} point arrays",
+            d[0], d[1], d[2], self.point_data.num_arrays())
+    }
 }
 
 impl DataObject for RectilinearGrid {

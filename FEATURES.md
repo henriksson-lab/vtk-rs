@@ -2,7 +2,7 @@
 
 Feature tracking for vtk-rs — a pure Rust reimplementation of VTK.
 
-Last updated: 2026-03-26 | Tests: 1960 | Clippy: clean
+Last updated: 2026-03-27 | Tests: 2444 | Clippy: clean (PartialEq on all major data types)
 
 ---
 
@@ -10,41 +10,41 @@ Last updated: 2026-03-26 | Tests: 1960 | Clippy: clean
 
 ### Implemented
 
-- [x] `DataArray<T>` — generic contiguous tuple array (f32, f64, i8–u64)
-- [x] `AnyDataArray` — type-erased enum over all `DataArray<T>` variants
-- [x] `CellArray` — offsets + connectivity (mirrors `vtkCellArray`)
-- [x] `Points<T>` — 3-component point coordinates (default f64)
-- [x] `FieldData` — named collection of `AnyDataArray`
-- [x] `DataSetAttributes` — active scalars/vectors/normals/tcoords/tensors
+- [x] `DataArray<T>` — `from_fn()`, `filled()`, `iter_tuples()`, `map()`, `scale()`, `normalize()`, `magnitude()`, `extract_component()`, `concat()`, `compose()`
+- [x] `AnyDataArray` — type-erased enum over all `DataArray<T>` variants + `statistics()`, `range()`
+- [x] `CellArray` — offsets + connectivity + `cell_size()`, `cell_sizes()`, `is_homogeneous()`, `IntoIterator`
+- [x] `Points<T>` — `from_fn()`, `to_vec()`, `as_flat_slice()`, `centroid()`, `transform()`, `Iterator`/`IntoIterator`
+- [x] `FieldData` — named collection + `has_array()`, `names()`, `clear()`
+- [x] `DataSetAttributes` — active attributes + `has_array()`, `array_names()`, `remove_array()`, `iter()`
 - [x] `DataObject` trait, `DataSet` trait
-- [x] `PolyData` — 4 cell arrays (verts/lines/polys/strips) + point/cell data
-- [x] `ImageData` — regular grid with extent/spacing/origin
-- [x] `UnstructuredGrid` — mixed-cell mesh with explicit connectivity + cell types
-- [x] `RectilinearGrid` — axis-aligned grid with non-uniform per-axis coordinate arrays
-- [x] `StructuredGrid` — curvilinear grid with explicit points and structured i×j×k topology
-- [x] `BoundingBox`
+- [x] `PolyData` — `from_triangles/quads/lines/vertices/polyline/xyz_arrays`, `append()`, `to_table()`, `summary()`, `approx_eq()`, `num_edges()`, builder
+- [x] `ImageData` — `from_function()`, `with_spacing/origin/point_array` builders
+- [x] `UnstructuredGrid` — mixed-cell mesh + `from_tetrahedra/hexahedra` + builder pattern
+- [x] `RectilinearGrid` — axis-aligned grid + `uniform()` + builder pattern
+- [x] `StructuredGrid` — curvilinear grid + `from_function()`, `uniform()`, builder
+- [x] `BoundingBox` — size, volume, contains, intersects, union, intersection, pad, from_corners
 - [x] `Scalar` trait + `ScalarType` enum (10 types: f32, f64, i8–u64)
 - [x] `CellType` enum — all VTK linear + quadratic cell types
-- [x] `VtkError` — Io, Parse, InvalidData, Unsupported, IndexOutOfBounds
+- [x] `VtkError` — Io, Parse, InvalidData, Unsupported, IndexOutOfBounds, DimensionMismatch, EmptyData + helpers
 
 ### Not Yet Implemented
 
-- [x] `Table` — columnar data (rows × named columns)
-- [ ] `Graph` / `Tree` — graph data structures
-- [x] `MultiBlockDataSet` — composite dataset with named heterogeneous blocks
-- [ ] `HyperTreeGrid` — AMR-style hierarchical grids
-- [ ] `ExplicitStructuredGrid`
-- [x] `Selection` / `SelectionNode` — content types: Indices, Thresholds, GlobalIds, Frustum, Blocks
+- [x] `Table` — columnar data + `filter_rows()`, `sort_by_column()`, `select_rows()`, `value_f64()`, builder
+- [x] `Graph` / `Tree` — directed/undirected graph with vertex/edge data, tree with parent/children/depth
+- [x] `MultiBlockDataSet` — composite dataset + typed getters, `flatten()`, `remove_by_name()`, builder
+- [x] `HyperTreeGrid` — AMR octree/quadtree grid with recursive subdivision and per-cell data
+- [x] `ExplicitStructuredGrid` — structured grid with per-cell blanking/visibility
+- [x] `Selection` / `SelectionNode` — Indices, Thresholds, GlobalIds, Frustum, Blocks + `extract_selection()` filter
 - [x] Implicit functions (`ImplicitPlane`, `ImplicitSphere`, `ImplicitBox` + `ImplicitFunction` trait)
 - [x] `KdTree` — k-d tree for nearest-neighbor, k-NN, and radius queries
 - [x] `OctreePointLocator` — octree for nearest-neighbor and radius queries
 - [x] `CellLocator` — BVH-based cell locator for closest-cell and radius queries
-- [ ] Higher-order / Lagrange / Bezier cell support
-- [ ] `Molecule` data type
+- [x] Higher-order / Lagrange / Bezier cell support — cell types (68-81), Lagrange/Bernstein basis evaluation, curve/quad tessellation
+- [x] `Molecule` — atoms (atomic number, position) + bonds (connectivity, order), CPK colors, element symbols
 
 ---
 
-## Geometry Sources (33 / ~40 in VTK)
+## Geometry Sources (40 / ~40 in VTK)
 
 ### Implemented
 
@@ -82,12 +82,21 @@ Last updated: 2026-03-26 | Tests: 1960 | Clippy: clean
 - [x] `star` — star polygon with configurable inner/outer radii
 - [x] `noise_field` — 3D value-noise scalar field on ImageData
 - [x] `ring` — thick ring (torus with small tube radius)
+- [x] `klein_bottle` — Klein bottle immersion surface
+- [x] `trefoil_knot` — trefoil knot tube geometry
+- [x] `cross` — 3D cross / plus-sign geometry
+- [x] `boy_surface` — Boy's surface immersion of the projective plane
+- [x] `spiral` — spiral curve polyline
+- [x] `icosphere` — icosphere by recursive subdivision
+- [x] `mobius_strip` — Möbius strip surface variant
+- [x] `gear` — gear/cog wheel polygon
+- [x] `grid_2d` — 2D grid with configurable resolution
 
 ### Not Yet Implemented
 
 ---
 
-## Processing Filters (432 / ~300+ in VTK)
+## Processing Filters (568 / ~300+ in VTK)
 
 ### Implemented
 
@@ -580,6 +589,443 @@ Last updated: 2026-03-26 | Tests: 1960 | Clippy: clean
 | `count_components` | Connected component counting and labeling |
 | `decimate_vertex_cluster` | Vertex clustering decimation |
 
+#### Mesh Boolean & Clipping (additional)
+| `poly_data_boolean_2d` | 2D polygon boolean operations |
+| `mesh_boolean_exact` | Exact boolean operations on PolyData |
+| `mesh_boolean_difference` | Boolean difference between meshes |
+| `mesh_boolean_union_approx` | Approximate boolean union |
+| `mesh_boolean_cells` | Cell-level boolean operations |
+| `mesh_boolean_point_set` | Point set boolean operations (intersection/difference/union) |
+| `mesh_clip_by_plane` | Plane clipping with triangle splitting |
+| `mesh_cylinder_clip` | Clip mesh by cylinder volume |
+| `mesh_sphere_clip` | Clip mesh by sphere volume |
+
+#### Mesh Smoothing (additional)
+| `mesh_smooth_taubin` | Volume-preserving Taubin smoothing |
+| `mesh_smoothing_cotangent` | Cotangent-weighted Laplacian smoothing |
+| `mesh_smooth_laplacian_simple` | Iterative Laplacian smoothing with boundary preservation |
+| `mesh_smooth_cotangent` | Cotangent Laplacian mesh smoothing |
+| `mesh_smooth_bilaplacian` | Bi-Laplacian (4th order) mesh smoothing |
+| `mesh_smooth_hc` | HC (Humphrey's Classes) Laplacian smoothing |
+| `mesh_bilateral_smooth` | Edge-preserving bilateral mesh smoothing |
+| `mesh_weighted_smooth` | Scalar-weighted Laplacian smoothing |
+| `mesh_tangent_smooth` | Tangent-plane-only Laplacian smoothing |
+| `mesh_scalar_smoothing` | Scalar field Laplacian smoothing on mesh |
+
+#### Mesh Subdivision (additional)
+| `mesh_subdivision_sqrt3` | Sqrt(3) subdivision scheme |
+| `mesh_subdivision_ternary` | 1-to-9 ternary triangle subdivision |
+| `mesh_subdivide_quad` | Quad-to-4-quads subdivision |
+| `mesh_subdivide_loop` | Loop subdivision (1:4 triangle split) |
+| `mesh_subdivide_edge` | One-pass long-edge subdivision |
+| `mesh_midpoint_refine` | Pure midpoint subdivision (tri→4, quad→4) |
+| `mesh_barycentric_subdivide` | Barycentric subdivision (1:6 triangle split) |
+| `mesh_edge_midpoint_split` | Edge midpoint subdivision (1:4 triangle split) |
+
+#### Mesh Decimation & Simplification (additional)
+| `mesh_decimate_angle` | Angle-based decimation of coplanar regions |
+| `mesh_decimate_vertex_clustering` | Vertex clustering decimation |
+| `mesh_decimate_quadric_error` | Garland-Heckbert quadric error metric decimation |
+| `mesh_simplify_vertex_removal` | Curvature-based flat vertex removal |
+| `mesh_coarsen` | K-d tree based mesh coarsening |
+| `mesh_collapse_short_edges` | K-d tree accelerated short edge collapse |
+| `mesh_aspect_ratio_improve` | Edge-length-weighted mesh quality improvement |
+
+#### Mesh Curvature (additional)
+| `mesh_curvature_tensor` | Curvature tensor per vertex |
+| `mesh_curvature_mean_simple` | Mean curvature via cotangent Laplacian |
+| `mesh_vertex_curvature_gaussian` | Gaussian curvature via angle defect |
+| `mesh_principal_curvatures` | Principal curvatures (K1, K2) and shape index |
+| `mesh_curvature_line` | Curvature line extraction |
+| `mesh_curvature_histogram` | Curvature distribution analysis |
+| `mesh_curvature_color` | Signed-curvature diverging RGB colormap |
+| `mesh_curvature_color_map` | Curvature-to-color mapping |
+| `mesh_curvature_map_to_color` | Map curvature values to vertex colors |
+| `mesh_surface_curvature_integral` | Total absolute/mean curvature integrals |
+
+#### Mesh Analysis & Queries (additional)
+| `mesh_info` | Mesh topology and geometry summary statistics |
+| `mesh_measure` | Comprehensive mesh measurements (area, edges, cell types) |
+| `mesh_export_stats` | Mesh info and type queries |
+| `mesh_aspect_ratio_stats` | Comprehensive aspect ratio quality analysis |
+| `mesh_aspect_ratio_compute` | Per-triangle aspect ratio computation |
+| `mesh_face_area_stats` | Per-face area computation and statistics |
+| `mesh_face_data_stats` | Per-cell min/max/mean/range from point data |
+| `mesh_edge_angle_stats` | Dihedral angle analysis and statistics |
+| `mesh_edge_valence_stats` | Per-vertex edge valence and mesh-wide stats |
+| `mesh_edge_length_stats` | Per-edge length computation and statistics |
+| `mesh_vertex_neighbors` | Vertex neighbor counting and N-ring extraction |
+| `mesh_vertex_star` | Vertex star degree and boundary classification |
+| `mesh_dihedral_angle_array` | Dihedral angle per interior edge as line PolyData |
+| `mesh_boundary_edges` | Boundary edge extraction and counting |
+| `mesh_face_pair_angle` | Face normal vs direction angle/dot product |
+| `mesh_face_normal_array` | Per-face normal computation as cell data |
+| `mesh_face_centroid_array` | Per-face centroid computation as cell data |
+| `mesh_face_centroid_filter` | Cell centroids and weighted center of mass |
+| `mesh_centroid` | Mesh centroid (simple and area-weighted) |
+| `mesh_non_manifold_edges` | Non-manifold edge detection |
+| `mesh_point_data_range` | Point data scalar range queries |
+| `mesh_face_skewness` | Per-cell face skewness metrics |
+| `mesh_volume_compute` | Closed mesh volume via divergence theorem |
+| `mesh_surface_area_compute` | Total surface area computation |
+| `mesh_surface_area_density` | Per-vertex Voronoi area and statistics |
+| `mesh_connected_components_count` | Connected component counting and labeling |
+| `mesh_connected_face_groups` | Edge-connected face component labeling |
+| `mesh_quality_histogram` | Aspect ratio and area distribution histograms |
+| `mesh_circumradius` | Triangle circumradius and circumradius/inradius ratio |
+| `mesh_face_normal_consistency` | Face normal orientation consistency check |
+| `mesh_normal_consistency_check` | Face winding consistency check |
+| `mesh_half_edge` | Half-edge valence and non-manifold detection |
+| `mesh_cell_connectivity_matrix` | Cell adjacency analysis |
+| `mesh_ring_buffer` | Vertex ring analysis and irregular detection |
+| `mesh_topology_check` | Comprehensive mesh topology validation report |
+| `mesh_topology_distance` | Hop-count distance and graph eccentricity |
+| `mesh_topology_genus` | Euler characteristic and genus computation |
+| `mesh_watertight_check` | Comprehensive watertight mesh validation |
+| `mesh_convex_check` | Mesh convexity testing |
+| `mesh_self_intersection` | Triangle mesh self-intersection detection |
+| `mesh_neighborhood_stats` | Per-vertex min/max/mean/range of scalar neighborhood |
+| `mesh_array_statistics` | Comprehensive scalar statistics (mean/median/std/skew/IQR) |
+
+#### Mesh Topology & Repair (additional)
+| `mesh_repair` | Remove duplicate/degenerate cells and unused points |
+| `mesh_topology_repair` | Fix non-manifold edges by vertex duplication |
+| `mesh_topology_simplify` | Topology simplification operations |
+| `mesh_topological_noise` | Remove small connected components by face count |
+| `mesh_remove_unused_points` | Remove unreferenced points and reindex cells |
+| `mesh_orient_faces` | BFS-based consistent face winding orientation |
+| `mesh_invert_faces` | Flip polygon winding and normals |
+| `mesh_weld_vertices` | Tolerance-based vertex welding |
+| `mesh_vertex_merge_by_distance` | K-d tree based efficient vertex merging |
+| `mesh_duplicate_faces` | Detect and remove duplicate faces |
+| `mesh_edge_swap` | Delaunay-criterion edge swapping for quality improvement |
+| `mesh_edge_split` | Duplicate vertices at sharp edges for flat shading |
+| `mesh_vertex_split` | Split vertex into per-face-group copies |
+
+#### Mesh Geodesic & Distance (additional)
+| `mesh_geodesic_path` | Shortest path on mesh via Dijkstra |
+| `mesh_geodesic_distance_dijkstra` | Dijkstra-based geodesic distance from seed points |
+| `mesh_geodesic_distance_heat` | Heat method approximate geodesic distance |
+| `mesh_geodesic_voronoi` | Geodesic Voronoi partition via edge-weighted Dijkstra |
+| `mesh_geodesic_farthest_point` | Geodesic farthest point sampling and coverage |
+| `mesh_geodesic_heat_kernel` | Multi-scale heat diffusion shape descriptor |
+| `mesh_heat_geodesic_iso` | Iso-distance contour extraction from geodesic field |
+| `mesh_heat_method_distance` | Heat method approximate geodesic distance |
+| `mesh_distance_field` | Signed distance field from mesh surface |
+| `mesh_signed_distance_field` | Signed distance from closed surface on grid |
+| `mesh_distance_between_meshes` | Symmetric Hausdorff-like distance between meshes |
+| `mesh_intrinsic_distance` | Weighted geodesic distance |
+| `mesh_closest_pair` | Closest and farthest point pair queries |
+| `mesh_closest_point_on_surface` | Project points onto nearest surface location |
+
+#### Mesh Deformation (additional)
+| `mesh_twist` | Axis-based twist deformation |
+| `mesh_bend` | Axis-based bend deformation |
+| `mesh_taper` | Taper deformation along axis |
+| `mesh_wave_deform` | Wave-based deformation |
+| `mesh_explode` | Explode cells outward from mesh centroid |
+| `mesh_flatten` | Mesh flattening and Z scaling |
+| `mesh_project_to_plane` | Project mesh onto a plane |
+| `mesh_random_perturb` | Add random/Gaussian noise to vertex positions |
+| `mesh_noise_displacement` | Noise-based vertex displacement |
+| `mesh_vertex_displacement` | Scalar/vector displacement of mesh vertices |
+| `mesh_vertex_displacement_array` | Per-vertex displacement between two meshes |
+| `mesh_vertex_scatter` | Scatter cells outward from centroid |
+| `mesh_cage_deform` | Inverse-distance weighted cage deformation |
+| `mesh_laplacian_deform_simple` | Handle-based Laplacian mesh deformation |
+| `mesh_arap_deform` | As-Rigid-As-Possible mesh deformation |
+| `mesh_spring_relaxation` | Spring-mass physics relaxation |
+| `mesh_wave_simulation` | Wave equation simulation on mesh connectivity |
+| `mesh_heat_equation` | Heat equation simulation on mesh connectivity |
+
+#### Mesh Spatial & Transform (additional)
+| `mesh_scale` | Mesh scaling around center point |
+| `mesh_translate` | Mesh translation and centering |
+| `mesh_rotate` | Rodrigues' rotation around axis through center |
+| `mesh_center` | Mesh centering, normalization, PCA alignment |
+| `mesh_merge` | Concatenate two PolyData meshes |
+| `mesh_offset` | Offset mesh along vertex normals by distance |
+| `mesh_thicken` | Surface-to-solid thickening along normals |
+| `mesh_extrude_along_normal` | Extrude surface along vertex normals |
+| `mesh_mirror` | Mirror mesh across coordinate plane |
+| `mesh_axis_projection` | Geometric projections (axis plane, sphere, cylinder) |
+| `mesh_axis_aligned_slice` | Axis-aligned mesh slicing |
+| `mesh_pca_axes` | PCA-based principal axis computation |
+| `mesh_obb` | Oriented bounding box computation |
+| `mesh_spin_axis` | Rotational symmetry axis detection via PCA |
+
+#### Mesh Parameterization & UV (additional)
+| `mesh_parameterize` | Planar and cylindrical UV parameterization |
+| `mesh_parameterize_tutte` | Tutte embedding for disk-topology meshes |
+| `mesh_texture_atlas` | Per-triangle texture atlas UV parameterization |
+| `mesh_unwrap` | UV unwrap visualization and distortion metrics |
+| `mesh_uv_checker` | UV quality visualization and seam analysis |
+| `mesh_uv_from_projection` | UV coordinates from planar/spherical projection |
+| `mesh_conformal_factor` | Mesh deformation quality metrics (angle distortion) |
+
+#### Mesh Descriptors & Features (additional)
+| `mesh_heat_kernel` | Heat Kernel Signature shape descriptor |
+| `mesh_spectral_descriptor` | Multi-scale heat diffusion shape descriptor |
+| `mesh_point_pair_features` | PPF-based shape descriptor for point clouds |
+| `mesh_shape_diameter` | Inward ray-casting thickness estimation |
+| `mesh_saliency` | Multi-scale curvature saliency detection |
+| `mesh_feature_size` | Point cloud feature size and spacing |
+| `mesh_feature_line` | Ridge and valley line extraction |
+| `mesh_feature_angle_detect` | Feature angle detection by dihedral angle |
+| `mesh_extract_sharp_features` | Sharp edge detection by dihedral angle |
+| `mesh_scale_space` | Difference of Gaussians and scale-space features |
+| `mesh_vertex_importance` | Multi-factor vertex importance for simplification |
+
+#### Mesh Coloring & Attributes (additional)
+| `mesh_face_color` | Greedy face graph coloring |
+| `mesh_vertex_color_transfer` | K-d tree based attribute transfer between meshes |
+| `mesh_vertex_color_from_position` | Color vertices by position |
+| `mesh_edge_color` | Edge coloring by dihedral angle |
+| `mesh_point_data_interpolate` | Point data interpolation between meshes |
+| `mesh_point_data_gradient` | Per-face gradient averaged to vertices |
+| `mesh_scalar_gradient_on_mesh` | Scalar gradient computation on mesh |
+| `mesh_point_to_cell_data` | Average point data to cells |
+| `mesh_cell_to_point_data` | Average cell data to points |
+| `mesh_cell_to_point_interpolate` | Area-weighted cell-to-point interpolation |
+| `mesh_vertex_to_cell` | Vertex mask to cell mask conversion |
+| `mesh_face_normal_angle` | Face normal vs direction angle/dot product |
+| `mesh_select_by_normal` | Select faces by normal direction alignment |
+| `mesh_select_cells_by_area` | Area-based cell selection |
+
+#### Mesh Point Cloud (additional)
+| `mesh_point_cloud_to_mesh` | K-NN triangle reconstruction from point cloud |
+| `mesh_point_cloud_to_vertices` | Point cloud to vertex PolyData conversion |
+| `mesh_point_cloud_from_mesh` | Extract point cloud from mesh |
+| `mesh_point_cloud_normal_estimation` | PCA-based normal estimation for point clouds |
+| `mesh_point_cloud_normals_orient` | BFS-based consistent normal orientation |
+| `mesh_point_cloud_outlier` | Statistical k-NN outlier detection and removal |
+| `mesh_point_cloud_align` | PCA-based point cloud alignment |
+| `mesh_vertex_cluster` | Farthest-point-sampling vertex clustering |
+| `mesh_vertex_cluster_kmeans` | K-means vertex clustering with inertia metric |
+| `mesh_vertex_cluster_by_normal` | Normal-based vertex clustering |
+
+#### Mesh Partitioning & Segmentation (additional)
+| `mesh_face_cluster` | Normal-based face clustering via region growing |
+| `mesh_face_group_by_normal` | Group faces by normal similarity |
+| `mesh_region_grow` | Scalar-constrained region growing |
+| `mesh_voronoi_cells` | Voronoi partition on mesh + CVT iteration |
+| `mesh_split_by_connectivity` | Split mesh by connected components |
+| `mesh_convex_decompose` | Approximate convex decomposition |
+| `mesh_convex_layers` | Convex onion peeling layers (2D) |
+| `mesh_convex_hull_2d` | 2D convex hull (Andrew's monotone chain) |
+| `mesh_convex_hull_3d` | 3D convex hull computation |
+
+#### Mesh Ray Casting & Picking (additional)
+| `mesh_ray_cast` | Möller–Trumbore ray-mesh intersection |
+| `mesh_ray_triangle_intersect` | Single ray-triangle intersection test |
+| `mesh_pick` | Point/cell picking via closest-point queries |
+| `mesh_point_in_mesh` | Ray-casting point-in-mesh test |
+| `mesh_visibility` | Hemisphere ray-casting ambient occlusion |
+| `mesh_ambient_occlusion` | Per-vertex ambient occlusion |
+
+#### Mesh Graph & Spectral (additional)
+| `mesh_edge_graph` | Edge graph extraction and analysis |
+| `mesh_abstract_graph` | Graph algorithms on mesh connectivity |
+| `mesh_laplacian_matrix` | Laplacian matrix computation |
+| `mesh_laplacian_eigenmaps` | Spectral mesh analysis via Laplacian eigenvalues |
+| `mesh_laplacian_spectrum` | Laplacian spectral analysis and spectral gap |
+| `mesh_laplacian_energy` | Dirichlet/Willmore energy and smoothness metrics |
+| `mesh_minimum_spanning_tree` | Kruskal MST on mesh edge graph |
+| `mesh_random_walk` | Random walk simulation on mesh graph |
+| `mesh_harmonic_map` | Harmonic field interpolation with boundary conditions |
+| `mesh_scalar_field_topology` | Min/max/saddle detection on scalar mesh |
+| `mesh_signed_angle_field` | Direction field via tangent-plane angle projection |
+
+#### Mesh Morphing & Registration (additional)
+| `mesh_morph` | Mesh morphing with easing functions |
+| `mesh_procrustes` | Procrustes shape alignment and distance |
+| `mesh_correspondence` | Point set correspondence and attribute transfer |
+| `mesh_symmetry` | Bilateral symmetry detection |
+| `mesh_symmetry_plane` | Best symmetry plane computation |
+| `mesh_spherical_harmonic_decompose` | Spherical harmonic decomposition |
+
+#### Mesh Extraction & Selection (additional)
+| `mesh_boundary_loop` | Extract and count boundary loops |
+| `mesh_extract_boundary_loop` | Extract boundary loops as polylines |
+| `mesh_extract_largest_component` | Extract largest connected component |
+| `mesh_extract_sharp_features` | Extract sharp edges and features |
+| `mesh_one_ring` | Vertex neighborhood extraction |
+| `mesh_patch_select` | Select face patch within geodesic radius |
+| `mesh_random_sample_cells` | Random and systematic cell sampling |
+| `mesh_sample_surface` | Uniform stratified surface sampling |
+| `mesh_poisson_disk` | Poisson-disk subsampling for well-spaced points |
+| `mesh_poisson_sample` | Poisson-disk surface sampling |
+| `mesh_wireframe_extract` | Edge extraction variants (boundary/internal) |
+
+#### Mesh Miscellaneous (additional)
+| `mesh_depth_sort` | Depth-ordered face sorting for rendering |
+| `mesh_silhouette` | Silhouette edge extraction |
+| `mesh_border_distance` | BFS hop distance from boundary vertices |
+| `mesh_boundary_fill` | Exponential decay flood-fill from boundary |
+| `mesh_vertex_normal_deviation` | Vertex normal vs face normal deviation |
+| `mesh_angle_defect` | Discrete angle defect and Gauss-Bonnet verification |
+| `mesh_surface_integral` | Scalar integral and vector flux over surface |
+| `mesh_frame_field` | Tangent/bitangent/normal frame per vertex |
+| `mesh_tensor_field` | Tensor field computation on mesh |
+| `mesh_point_normals_recompute` | Area-weighted normal recomputation and flipping |
+| `mesh_area_weighted_normals` | Advanced area/angle-weighted vertex normals |
+| `mesh_vertex_normal_weight` | Vertex normals with configurable weighting |
+| `mesh_inertia` | Moment of inertia and principal axes |
+| `mesh_hole_detect` | Detect boundary holes with perimeter measurement |
+| `mesh_skeleton` | 2D medial axis via Voronoi dual of Delaunay |
+| `mesh_skeleton_extract` | Skeleton curve extraction |
+| `mesh_voxelize` | Convert mesh surface to voxel ImageData |
+| `mesh_resample_on_grid` | Resample mesh data onto regular grid |
+| `mesh_iso_line` | Isocontour extraction on triangle mesh |
+| `mesh_contour_on_mesh` | Multi-isocontour extraction with length |
+| `mesh_planar_section` | Plane-mesh intersection and area |
+| `mesh_level_set` | Level set isocontour extraction |
+| `mesh_thinning` | Medial axis thinning |
+| `mesh_marching_squares` | 2D marching squares contour extraction |
+| `mesh_delaunay_triangulate_2d` | 2D Delaunay triangulation variant |
+| `mesh_voronoi_diagram_2d` | 2D Voronoi diagram variant |
+| `mesh_quad_remesh` | Greedy triangle-pair to quad conversion |
+| `mesh_remesh_isotropic` | Isotropic remeshing via iterative edge operations |
+| `mesh_dual_contour` | Topological dual mesh with polygon cells |
+| `mesh_inscribed_sphere` | Inscribed sphere computation |
+| `mesh_circumscribed_sphere` | Circumscribed sphere computation |
+| `mesh_sdf_from_points` | SDF from oriented point cloud |
+| `mesh_area_equalize` | Triangle area equalization |
+| `mesh_edge_length_equalize` | Edge length equalization |
+| `mesh_paint` | Interactive sphere-brush scalar painting |
+| `mesh_array_calculator` | Expression-based field computation on mesh |
+| `mesh_scatter_plot` | 3D scatter plot and 2D histogram data visualization |
+| `mesh_spin` | Spin image point density descriptor |
+| `mesh_aabb_tree` | BVH spatial subdivision |
+| `mesh_hausdorff_directed` | Per-point Hausdorff error with max/mean/rms stats |
+| `mesh_triangulate_quads` | Quad-to-triangle conversion (shortest diagonal) |
+| `mesh_coplanar_merge` | Coplanar triangle merging |
+| `mesh_triangle_strip_convert` | Convert between triangle strips and triangles |
+| `mesh_aspect_ratio_filter` | Sliver triangle filtering by aspect ratio |
+| `mesh_face_area_filter` | Area-based face filtering |
+| `mesh_edge_flip` | Delaunay-criterion edge flipping |
+| `mesh_vertex_to_polydata` | Point extraction variants |
+
+#### Image Processing (additional)
+| `attribute_convert` | Attribute type conversion |
+| `decimate_boundary` | Boundary-preserving decimation |
+| `image_clamp_range` | Clamp ImageData values to range |
+| `image_min_max` | Element-wise min/max/abs-diff of ImageData |
+| `image_fft` | DFT-based power spectrum of ImageData |
+| `image_bilateral_3d` | 3D bilateral filtering |
+| `image_bilateral_filter` | Edge-preserving bilateral filtering |
+| `image_roi` | Region-of-interest masking (sphere/box) |
+| `image_binarize` | Adaptive and global binarization |
+| `image_threshold_multi` | Multi-level thresholding and segmentation |
+| `image_threshold_binary` | Binary thresholding on ImageData |
+| `image_local_extrema` | Local extrema detection in ImageData |
+| `image_local_extrema_detect` | Local maxima/minima point extraction |
+| `image_local_contrast` | Local contrast enhancement (CLAHE-like) |
+| `image_local_range` | Local range and standard deviation filters |
+| `image_morphological_gradient` | Morphological gradient |
+| `image_morphological_skeleton` | Morphological skeletonization |
+| `image_opening_closing` | Morphological opening and closing |
+| `image_top_hat` | Top-hat morphological transform |
+| `image_erode_binary` | Binary morphological erosion |
+| `image_erode_dilate_binary` | Binary dilation and erosion |
+| `image_mean_filter` | Mean/average filtering |
+| `image_variance_filter` | Local variance filtering |
+| `image_gaussian_blur` | Gaussian blur convolution |
+| `image_sharpen` | Unsharp masking |
+| `image_sobel_3d` | 3D Sobel edge detection |
+| `image_convolve_separable` | Separable 3D convolution |
+| `image_stencil` | Custom stencil/convolution |
+| `image_anisotropic_diffusion` | Perona-Malik edge-preserving diffusion |
+| `image_edge_preserve_smooth` | Edge-preserving smoothing |
+| `image_watershed` | Marker-based watershed segmentation |
+| `image_watershed_simple` | Simple watershed segmentation |
+| `image_slic` | SLIC superpixel segmentation |
+| `image_connected_threshold` | Connected threshold region growing |
+| `image_connected_components_3d` | 3D connected component labeling |
+| `image_connected_components_count` | Connected component counting |
+| `image_connected_filter` | Connected component filtering (largest/by size) |
+| `image_flood_fill` | Flood fill on ImageData |
+| `image_island_remove` | Remove small connected components from binary image |
+| `image_canny_approx` | Approximate Canny edge detection |
+| `image_difference_of_gaussians` | Difference of Gaussians blob detection |
+| `image_distance_transform_chamfer` | Borgefors chamfer distance transform |
+| `image_distance_to_surface` | Distance from voxels to PolyData surface |
+| `image_chamfer_distance` | 3-4-5 Borgefors chamfer distance |
+| `image_moments` | Spatial moments (center of mass, variance) |
+| `image_cumulative` | Cumulative sums and integral image |
+| `image_integral_invariant` | Integral invariant computations |
+| `image_colorize` | Scalar-to-RGB colormapping and lookup table |
+| `image_compose` | Vector field composition/decomposition |
+| `image_channel_math` | Channel-wise math operations |
+| `image_magnitude` | Vector magnitude computation |
+| `image_phase_congruency` | Phase congruency feature detection |
+| `image_feature_extraction` | Harris corner and feature detection |
+| `image_histogram_match` | Histogram specification (match to reference) |
+| `image_histogram_compute` | ImageData scalar histogram computation |
+| `image_gabor` | Gabor filter for oriented texture analysis |
+| `image_template_match` | NCC-based template matching |
+| `image_ssim` | Structural Similarity Index (SSIM) |
+| `image_psnr` | PSNR and MAE image quality metrics |
+| `image_correlation` | Pearson correlation and covariance |
+| `image_cosine_similarity` | Cosine similarity, Euclidean, L1 distance |
+| `image_knn_classify` | K-nearest-neighbor scalar classification |
+| `image_label_stats` | Per-label region statistics |
+| `image_label_boundary` | Label region boundaries and inter-label contact |
+| `image_region_props` | Per-label region props (area, centroid, bbox, mean) |
+| `image_statistics_map` | Local statistics map computation |
+| `image_percentile` | Percentile queries and percentile-based clipping |
+| `image_percentile_filter` | Generalized percentile filter |
+| `image_max_pool` | Max/min/avg pooling operations |
+| `image_pyramid` | Gaussian and Laplacian image pyramids |
+| `image_resize_nearest` | Nearest-neighbor image resizing |
+| `image_slice_extract` | Axis-aligned slice extraction |
+| `image_extract_slice` | 2D slice extraction from 3D ImageData |
+| `image_extract_channel` | Extract single channel from multi-component array |
+| `image_extract_component` | Extract component from multi-component array |
+| `image_stack` | Stack 2D slices to 3D volume |
+| `image_profile` | 1D profile extraction (row/column/diagonal) |
+| `image_max_projection` | Maximum intensity projection |
+| `image_min_projection` | Minimum intensity projection |
+| `image_sum_projection` | Sum intensity projection |
+| `image_gradient_magnitude` | Gradient magnitude via central differences |
+| `image_gradient_vector` | 3-component gradient vector |
+| `image_gradient_direction` | Gradient direction and orientation |
+| `image_laplacian` (filters) | Discrete Laplacian of scalar field |
+| `image_divergence` | Divergence of vector fields |
+| `image_curl` | Curl magnitude of vector fields |
+| `image_rle_compress` | Run-length encoding and value analysis |
+| `image_quantize` | Scalar quantization and dithered quantization |
+| `image_invert` | Invert ImageData values |
+| `image_clamp` | Clamp values to range |
+| `image_normalize_range` | Normalize to [0,1] range |
+| `image_remap_range` | Linear scalar range remapping |
+| `image_mask_by_scalar` | Scalar-range masking |
+| `image_mask_apply` | Mask application and creation |
+| `image_resample_simple` | Simple nearest-neighbor resampling |
+| `image_power_law` | Gamma correction and sigmoid contrast |
+| `image_math` | Element-wise ImageData math operations |
+| `image_abs` | Absolute value, sqrt, log, exp on ImageData |
+| `image_logical` | Logical operations (AND/OR/XOR/NOT) on binary ImageData |
+| `image_local_binary_pattern` | Local Binary Pattern texture descriptor |
+| `image_entropy` | Local Shannon entropy for texture analysis |
+| `image_register_translation` | 2D image translation registration via cross-correlation |
+| `image_thin` | Zhang-Suen morphological thinning |
+| `image_hessian` | Hessian determinant for blob/saddle detection |
+
+#### Data Conversion & Other (additional)
+| `poly_data_bounds` | PolyData bounding box queries |
+| `poly_data_normals_flip` | Flip polygon normals |
+| `poly_data_transform_filter` | Direct geometric transformations on PolyData |
+| `poly_data_to_table` | Convert PolyData to Table |
+| `angle_between` | Dihedral angles between adjacent triangles |
+| `point_set_registration` | Translation-only registration + error |
+| `point_cloud_downsample` | Voxel and random point cloud downsampling |
+| `face_varying` | Convert cell data to per-face-vertex point data |
+| `image_dilate_erode` | Morphological dilation and erosion on ImageData |
+| `cell_data_to_point_data_avg` | Average cell data values to shared points |
+| `mesh_dual_graph` | Face adjacency dual graph as lines between centroids |
+| `mesh_sharp_edges` | Sharp edge detection by dihedral angle |
+
 ### High-Priority — Not Yet Implemented
 
 ### Lower-Priority — Not Yet Implemented
@@ -603,22 +1049,24 @@ Last updated: 2026-03-26 | Tests: 1960 | Clippy: clean
 | STL `.stl` | vtk-io-stl | yes | yes | ASCII & binary |
 | Wavefront `.obj` | vtk-io-obj | yes | yes | Vertices, normals, texture coords, faces |
 | Stanford PLY `.ply` | vtk-io-ply | yes | yes | ASCII & binary little-endian |
-| VTK XML `.vtm` | vtk-io-xml | | yes | MultiBlock index file (write only) |
+| glTF Binary `.glb` | vtk-io-gltf | yes | yes | glTF 2.0 binary (positions, normals, triangles) |
+| VTK XML `.vtm` | vtk-io-xml | yes | yes | MultiBlock index file with block loading |
+| EnSight Gold | vtk-io-ensight | yes | yes | ASCII case + geo + scalar/vector files |
+| XDMF `.xdmf` | vtk-io-xdmf | | yes | XML with inline data for PolyData + ImageData |
 
 ### High-Priority — Not Yet Implemented
 
-- [ ] VTK XML binary/appended — Binary and appended-data modes for `.vtp`/`.vtu`/`.vti`
-- [ ] VTP binary/appended — Binary and appended-data modes for `.vtp`
-- [ ] glTF `.gltf` / `.glb` — For interchange with 3D tools and web viewers
+- [x] VTK XML binary/appended — Base64 binary read + write for all 5 XML formats (.vtp/.vtu/.vti/.vtr/.vts), appended-data reader
+- [x] glTF `.glb` — Binary glTF 2.0 writer for PolyData (positions, normals, triangles)
 
 ### Lower-Priority — Not Yet Implemented
 
-- [ ] EnSight — EnSight Gold format
+- [x] EnSight — EnSight Gold format (ASCII reader + writer, case/geo/scalar/vector files)
 - [ ] Exodus — Exodus II (HDF5-based FEM format)
 - [ ] CGNS — CFD General Notation System
 - [ ] NetCDF — Network Common Data Format
-- [ ] XDMF — eXtensible Data Model and Format
-- [ ] LSDyna — LS-DYNA result files
+- [x] XDMF — eXtensible Data Model and Format (inline XML writer for PolyData + ImageData)
+- [x] LSDyna — LS-DYNA keyword reader (.k/.key/.dyn) for NODE + ELEMENT_SHELL/SOLID
 - [ ] Alembic — Alembic interchange format
 - [ ] OpenVDB — Sparse volumetric data
 - [ ] USD — Universal Scene Description
@@ -629,35 +1077,56 @@ Last updated: 2026-03-26 | Tests: 1960 | Clippy: clean
 
 ### Implemented
 
-- [x] `Camera` — position, focal point, view up, FOV, clip planes, orbit, dolly
-- [x] `Scene` / `Actor` — scene graph with actors holding PolyData + coloring
+- [x] `Camera` — position, focal point, FOV, orbit, dolly, pan, unproject, look_at, standard views (front/top/right/iso), right/up vectors
+- [x] `Scene` / `Actor` — fluent builders, position/scale/visibility, `reset_camera()`, `with_axes()`, `with_silhouette()`
 - [x] `Renderer` trait — backend-agnostic rendering abstraction
-- [x] `ColorMap` — jet, viridis, cool-to-warm, grayscale, plasma, inferno, turbo, black-body, blue-red
+- [x] `ColorMap` — 15 presets: jet, viridis, plasma, inferno, magma, cividis, turbo, cool_to_warm, grayscale, black_body, blue_red, rd_yl_bu, rainbow_desaturated, parula, spectral + `by_name()` lookup
 - [x] `Coloring::Solid` / `Coloring::ScalarMap` — per-actor coloring modes
-- [x] wgpu backend — Phong shading, smooth normals, scalar color mapping
-- [x] Mouse interaction — orbit (left drag), zoom (scroll)
+- [x] wgpu backend — Blinn-Phong shading with per-actor materials, multi-light support, scalar color mapping
+- [x] `Representation` modes — Surface, Wireframe, Points rendering via separate GPU pipelines
+- [x] Mouse interaction — orbit (left drag), pan (middle drag), zoom (scroll)
 - [x] Depth buffer
 
-- [x] `Light` — directional, point, spot, and ambient light types with color/intensity
-- [x] `Scene.lights` — multi-light support with headlight default
-- [x] `Material` — surface material properties (ambient/diffuse/specular/shininess, edge, flat shading)
+- [x] `Light` — directional, point, spot, and ambient light types with color/intensity, wired into GPU shader
+- [x] `Scene.lights` — multi-light support (up to 8), headlight default
+- [x] `Material` — per-actor surface properties wired into shader: ambient/diffuse/specular, flat shading (dpdx/dpdy), backface culling
 
 ### Not Yet Implemented
 
-- [ ] Edge overlay (surface + edges)
-- [ ] Transparency / alpha blending
-- [ ] Texture mapping (2D textures on surfaces)
-- [ ] Volume rendering (ray casting on ImageData)
-- [ ] Axes / orientation widget
-- [ ] Scalar bar (color legend)
-- [ ] Text / label rendering (2D overlay)
-- [ ] Screenshot / offscreen rendering
-- [ ] Picking (point/cell selection via mouse click)
-- [ ] Anti-aliasing (MSAA)
-- [ ] PBR materials (physically-based rendering)
-- [ ] Silhouette / outline rendering
-- [ ] LOD (level of detail) for large meshes
-- [ ] Instanced rendering for glyphs
+- [x] Edge overlay (surface + edges) — `material.edge_visibility` + `edge_color` rendered as line overlay
+- [x] Transparency / alpha blending — per-actor `opacity`, opaque-first then translucent with alpha blending
+- [x] Texture mapping (2D textures on surfaces) — `Coloring::TextureMap` with `Texture`, CPU-side UV sampling
+- [x] Volume rendering — CPU ray casting + GPU ray marching (3D texture, transfer function LUT, proxy cube geometry)
+- [x] Axes / orientation widget — `AxesWidget` with camera-rotated XYZ arrows, labels, 2D overlay
+- [x] Scalar bar (color legend) — `ScalarBar` widget with color bands, tick marks, 2D overlay pipeline
+- [x] Text / label rendering (2D overlay) — built-in 5x7 bitmap font, used by scalar bar and axes widget
+- [x] Screenshot / offscreen rendering — `render_to_image()` returns RGBA pixel buffer
+- [x] Picking — CPU ray-cast picking with `pick()` returning actor/cell/point/position, `Camera::unproject()`
+- [x] Anti-aliasing (MSAA) — 4x multisampling with resolve target
+- [x] PBR materials — Cook-Torrance BRDF with metallic/roughness, `Material::pbr_metal()` / `pbr_dielectric()`
+- [x] Silhouette / outline rendering — view-dependent silhouette edge extraction + line rendering
+- [x] LOD (level of detail) — `LodSet` with distance-based mesh selection, integrated into renderer
+- [x] Instanced rendering for glyphs — `InstancedGlyphs` with position/scale/color per instance, CPU flatten
+- [x] Animation — `CameraAnimation` with `Track<T>` keyframes, easing functions (linear, quad, cubic)
+- [x] Distance fog — linear/exponential/exponential² fog with configurable color, near/far, density
+- [x] GPU color-ID picking — `GpuPicker` renders actor/cell IDs to offscreen buffer for pixel-perfect selection
+- [x] Measurement tools — `measure()` for surface area, edge lengths, `point_distance()`, `angle_at_vertex()`, `triangle_area()`
+- [x] JSON scene export — `scene_to_json()` / `scene_to_json_string()` for scene configuration
+- [x] Shadow mapping — `ShadowConfig` with resolution, bias, softness, light VP matrix computation
+- [x] Skybox — `Skybox::Solid`/`Gradient`/`ThreeStop` + presets (studio, sky, white, black)
+- [x] Bloom — `BloomConfig` with threshold, intensity, radius, Gaussian kernel generation
+- [x] Annotations — `Label3D`, `DistanceRuler`, `AngleProtractor` for 3D measurement overlays
+- [x] Stereo rendering — `StereoConfig` with side-by-side, anaglyph, top/bottom modes + eye separation
+- [x] Screenshot — `save_ppm()`, `save_bmp()`, `save_tga()` for saving rendered images (no deps)
+- [x] Temporal data — `TemporalDataSet` with time steps, interpolation, bracketing
+- [x] Streamline seeding — `seed_line()`, `seed_plane()`, `seed_sphere()`, `seed_circle()`
+- [x] Transfer function editor — `TransferFunctionEditor` with add/remove/move control points
+- [x] Viewport system — `Viewport` with split-screen presets (half, quad grid), pixel conversion, hit testing
+- [x] Camera turntable + zoom — `CameraAnimation::turntable()` / `zoom()` for presentations
+- [x] Extract by cell type — `extract_cells_by_type()`, `cell_type_counts()` for UnstructuredGrid
+- [x] Table statistics — `describe_column()`, `correlation()`, `linear_regression()` for data analysis
+- [x] GPU clip planes — up to 6 clip planes per scene for section views, `ClipPlane::x()`/`y()`/`z()`
+- [x] Scene serialization — `save_scene_config()` / `load_scene_config()` for camera, lights, clip planes
 
 ---
 
@@ -665,17 +1134,17 @@ Last updated: 2026-03-26 | Tests: 1960 | Clippy: clean
 
 ### Implemented
 
-- [x] Workspace with 12 crates
-- [x] 4 interactive examples (triangle, shapes, isosurface, scalar_colors)
-- [x] 1588 unit tests
+- [x] Workspace with 15 crates + `vtk` convenience crate (`use vtk::prelude::*`)
+- [x] 10 examples (triangle, shapes, isosurface, scalar_colors, showcase, pipeline_demo, volume, mesh_info, headless_render, bench_filters)
+- [x] 2454 unit tests (incl. cross-format I/O roundtrip integration tests, 21 doctests, 10 proptests, Send+Sync assertions)
 - [x] Clippy-clean (`-D warnings`)
 
 ### Not Yet Implemented
 
-- [ ] Pipeline system (lazy evaluation, caching, automatic updates)
-- [ ] Parallel filter execution (rayon integration)
-- [ ] WASM / web target support
-- [ ] Python bindings (PyO3)
-- [ ] Benchmarks
-- [ ] Documentation (rustdoc with examples)
-- [ ] Property / fuzz testing
+- [x] Pipeline system — `Pipeline` with chained filters, lazy evaluation, caching, and invalidation
+- [x] Parallel filter execution (rayon) — `compute_normals_par`, `elevation_par`, `smooth_par`, `marching_cubes_par`
+- [x] WASM / web target support — all non-GPU crates (12) compile for wasm32-unknown-unknown
+- [x] Python bindings (PyO3) — `vtk-python` crate with PolyData, sources, filters, I/O
+- [x] Benchmarks — `cargo run --release --example bench_filters` (sphere, normals, marching cubes, etc.)
+- [x] Documentation (rustdoc with examples) — doc examples on DataArray, PolyData, ImageData, Camera, ColorMap
+- [x] Property / fuzz testing — proptest for DataArray, CellArray, Points, PolyData roundtrips

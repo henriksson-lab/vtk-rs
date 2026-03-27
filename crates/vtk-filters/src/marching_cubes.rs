@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use vtk_data::{CellArray, DataArray, ImageData, Points, PolyData};
 
 /// Extract an isosurface from scalar data on an ImageData grid using marching cubes.
@@ -479,6 +480,136 @@ pub(crate) const TRI_TABLE: [[i8; 16]; 256] = [
     [ 0, 3, 8,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
     [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
 ];
+
+/// Parallel marching cubes: processes Z-slices concurrently with rayon.
+///
+/// Each Z-slice produces its own points and triangles, then results are merged.
+/// For large volumes this can be significantly faster than the serial version.
+pub fn marching_cubes_par(image: &ImageData, scalars: &[f64], iso_value: f64) -> PolyData {
+    let dims = image.dimensions();
+    if dims[0] < 2 || dims[1] < 2 || dims[2] < 2 {
+        return PolyData::new();
+    }
+
+    let nx = dims[0];
+    let ny = dims[1];
+
+    // Process each Z-slice in parallel
+    let slices: Vec<(Vec<[f64; 3]>, Vec<[f64; 3]>, Vec<[usize; 3]>)> = (0..dims[2] - 1)
+        .into_par_iter()
+        .map(|k| {
+            let mut pts = Vec::new();
+            let mut norms = Vec::new();
+            let mut tris = Vec::new();
+
+            for j in 0..dims[1] - 1 {
+                for i in 0..dims[0] - 1 {
+                    let corners = [
+                        image.index_from_ijk(i, j, k),
+                        image.index_from_ijk(i + 1, j, k),
+                        image.index_from_ijk(i + 1, j + 1, k),
+                        image.index_from_ijk(i, j + 1, k),
+                        image.index_from_ijk(i, j, k + 1),
+                        image.index_from_ijk(i + 1, j, k + 1),
+                        image.index_from_ijk(i + 1, j + 1, k + 1),
+                        image.index_from_ijk(i, j + 1, k + 1),
+                    ];
+
+                    let values: [f64; 8] = std::array::from_fn(|c| scalars[corners[c]]);
+                    let positions: [[f64; 3]; 8] = [
+                        image.point_from_ijk(i, j, k),
+                        image.point_from_ijk(i + 1, j, k),
+                        image.point_from_ijk(i + 1, j + 1, k),
+                        image.point_from_ijk(i, j + 1, k),
+                        image.point_from_ijk(i, j, k + 1),
+                        image.point_from_ijk(i + 1, j, k + 1),
+                        image.point_from_ijk(i + 1, j + 1, k + 1),
+                        image.point_from_ijk(i, j + 1, k + 1),
+                    ];
+
+                    let mut cube_index = 0u8;
+                    for (bit, &val) in values.iter().enumerate() {
+                        if val >= iso_value {
+                            cube_index |= 1 << bit;
+                        }
+                    }
+                    if cube_index == 0 || cube_index == 255 { continue; }
+
+                    let edge_flags = EDGE_TABLE[cube_index as usize];
+                    if edge_flags == 0 { continue; }
+
+                    let grads: [[f64; 3]; 8] = std::array::from_fn(|c| {
+                        gradient_at(scalars, corners[c], nx, ny, dims)
+                    });
+
+                    let mut edge_verts = [0usize; 12];
+                    for edge in 0..12 {
+                        if edge_flags & (1 << edge) != 0 {
+                            let (e0, e1) = EDGE_VERTICES[edge];
+                            let t = if (values[e1] - values[e0]).abs() > 1e-10 {
+                                (iso_value - values[e0]) / (values[e1] - values[e0])
+                            } else {
+                                0.5
+                            };
+                            let p = lerp3(positions[e0], positions[e1], t);
+                            let n = lerp3(grads[e0], grads[e1], t);
+                            let nlen = (n[0]*n[0] + n[1]*n[1] + n[2]*n[2]).sqrt();
+                            let normal = if nlen > 1e-10 {
+                                [-n[0]/nlen, -n[1]/nlen, -n[2]/nlen]
+                            } else {
+                                [0.0, 0.0, 1.0]
+                            };
+                            edge_verts[edge] = pts.len();
+                            pts.push(p);
+                            norms.push(normal);
+                        }
+                    }
+
+                    let tri_row = &TRI_TABLE[cube_index as usize];
+                    let mut t = 0;
+                    while t < tri_row.len() && tri_row[t] != -1 {
+                        tris.push([
+                            edge_verts[tri_row[t] as usize],
+                            edge_verts[tri_row[t + 1] as usize],
+                            edge_verts[tri_row[t + 2] as usize],
+                        ]);
+                        t += 3;
+                    }
+                }
+            }
+            (pts, norms, tris)
+        })
+        .collect();
+
+    // Merge all slices
+    let mut points = Points::<f64>::new();
+    let mut polys = CellArray::new();
+    let mut normals_arr = DataArray::<f64>::new("Normals", 3);
+
+    for (pts, norms, tris) in slices {
+        let base = points.len();
+        for p in &pts {
+            points.push(*p);
+        }
+        for n in &norms {
+            normals_arr.push_tuple(n);
+        }
+        for tri in &tris {
+            polys.push_cell(&[
+                (tri[0] + base) as i64,
+                (tri[1] + base) as i64,
+                (tri[2] + base) as i64,
+            ]);
+        }
+    }
+
+    let mut pd = PolyData::new();
+    pd.points = points;
+    pd.polys = polys;
+    pd.point_data_mut().add_array(normals_arr.into());
+    pd.point_data_mut().set_active_normals("Normals");
+    pd
+}
 
 #[cfg(test)]
 mod tests {

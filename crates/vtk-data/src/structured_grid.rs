@@ -89,6 +89,49 @@ impl StructuredGrid {
     pub fn cell_data_mut(&mut self) -> &mut DataSetAttributes {
         &mut self.cell_data
     }
+
+    /// Create a structured grid from a function that maps (i,j,k) to position.
+    pub fn from_function(
+        dims: [usize; 3],
+        f: impl Fn(usize, usize, usize) -> [f64; 3],
+    ) -> Self {
+        let mut pts = Points::new();
+        for k in 0..dims[2] {
+            for j in 0..dims[1] {
+                for i in 0..dims[0] {
+                    pts.push(f(i, j, k));
+                }
+            }
+        }
+        Self::from_dimensions_and_points(dims, pts)
+    }
+
+    /// Create a uniform structured grid (same as ImageData geometry but explicit).
+    pub fn uniform(dims: [usize; 3], spacing: [f64; 3], origin: [f64; 3]) -> Self {
+        Self::from_function(dims, |i, j, k| [
+            origin[0] + i as f64 * spacing[0],
+            origin[1] + j as f64 * spacing[1],
+            origin[2] + k as f64 * spacing[2],
+        ])
+    }
+
+    /// Builder: add point data.
+    pub fn with_point_array(mut self, array: crate::AnyDataArray) -> Self {
+        let name = array.name().to_string();
+        self.point_data.add_array(array);
+        if self.point_data.scalars().is_none() {
+            self.point_data.set_active_scalars(&name);
+        }
+        self
+    }
+}
+
+impl std::fmt::Display for StructuredGrid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let d = self.dimensions;
+        write!(f, "StructuredGrid: {}x{}x{}, {} points, {} point arrays",
+            d[0], d[1], d[2], self.points.len(), self.point_data.num_arrays())
+    }
 }
 
 impl DataObject for StructuredGrid {

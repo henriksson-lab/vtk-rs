@@ -2,6 +2,19 @@
 ///
 /// Analogous to VTK's `vtkProperty`. Controls how light interacts
 /// with the surface.
+///
+/// # Examples
+///
+/// ```
+/// use vtk_render::Material;
+///
+/// let matte = Material::matte();
+/// assert_eq!(matte.specular, 0.0);
+///
+/// let metal = Material::pbr_metal(0.3);
+/// assert!(metal.pbr);
+/// assert_eq!(metal.metallic, 1.0);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Material {
     /// Ambient light contribution. Default: 0.1
@@ -26,6 +39,12 @@ pub struct Material {
     pub flat_shading: bool,
     /// Backface culling. Default: false
     pub backface_culling: bool,
+    /// Metallic factor for PBR (0.0 = dielectric, 1.0 = metal). Default: 0.0
+    pub metallic: f64,
+    /// Roughness factor for PBR (0.0 = mirror, 1.0 = fully rough). Default: 0.5
+    pub roughness: f64,
+    /// Whether to use PBR shading instead of Blinn-Phong. Default: false
+    pub pbr: bool,
 }
 
 impl Default for Material {
@@ -42,6 +61,9 @@ impl Default for Material {
             point_size: 3.0,
             flat_shading: false,
             backface_culling: false,
+            metallic: 0.0,
+            roughness: 0.5,
+            pbr: false,
         }
     }
 }
@@ -78,10 +100,41 @@ impl Material {
         }
     }
 
+    /// Create a PBR metal material.
+    pub fn pbr_metal(roughness: f64) -> Self {
+        Self {
+            pbr: true,
+            metallic: 1.0,
+            roughness,
+            ..Default::default()
+        }
+    }
+
+    /// Create a PBR dielectric (plastic/ceramic) material.
+    pub fn pbr_dielectric(roughness: f64) -> Self {
+        Self {
+            pbr: true,
+            metallic: 0.0,
+            roughness,
+            ..Default::default()
+        }
+    }
+
     /// Create a material with edge overlay.
     pub fn with_edges(mut self) -> Self {
         self.edge_visibility = true;
         self
+    }
+}
+
+impl std::fmt::Display for Material {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.pbr {
+            write!(f, "Material(PBR: metallic={:.1}, roughness={:.1})", self.metallic, self.roughness)
+        } else {
+            write!(f, "Material(Phong: ambient={:.1}, diffuse={:.1}, specular={:.1})",
+                self.ambient, self.diffuse, self.specular)
+        }
     }
 }
 
@@ -114,5 +167,36 @@ mod tests {
         let m = Material::flat().with_edges();
         assert!(m.flat_shading);
         assert!(m.edge_visibility);
+    }
+
+    #[test]
+    fn pbr_metal() {
+        let m = Material::pbr_metal(0.3);
+        assert!(m.pbr);
+        assert_eq!(m.metallic, 1.0);
+        assert_eq!(m.roughness, 0.3);
+    }
+
+    #[test]
+    fn pbr_dielectric() {
+        let m = Material::pbr_dielectric(0.8);
+        assert!(m.pbr);
+        assert_eq!(m.metallic, 0.0);
+        assert_eq!(m.roughness, 0.8);
+    }
+
+    #[test]
+    fn display_phong() {
+        let m = Material::default();
+        let s = format!("{m}");
+        assert!(s.contains("Phong"));
+    }
+
+    #[test]
+    fn display_pbr() {
+        let m = Material::pbr_metal(0.3);
+        let s = format!("{m}");
+        assert!(s.contains("PBR"));
+        assert!(s.contains("metallic"));
     }
 }

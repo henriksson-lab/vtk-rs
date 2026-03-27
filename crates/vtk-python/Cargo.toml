@@ -1,0 +1,16 @@
+[package]
+name = "vtk-python"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "vtk_python"
+crate-type = ["cdylib"]
+
+[dependencies]
+vtk-types = { workspace = true }
+vtk-data = { workspace = true }
+vtk-filters = { workspace = true }
+vtk-io-legacy = { workspace = true }
+vtk-io-stl = { workspace = true }
+pyo3 = { version = "0.23", features = ["extension-module"] }

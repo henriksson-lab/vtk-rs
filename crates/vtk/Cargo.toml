@@ -1,0 +1,11 @@
+[package]
+name = "vtk"
+version = "0.1.0"
+edition = "2021"
+description = "Convenience crate that re-exports all vtk-rs modules"
+
+[dependencies]
+vtk-types = { workspace = true }
+vtk-data = { workspace = true }
+vtk-filters = { workspace = true }
+vtk-render = { workspace = true }

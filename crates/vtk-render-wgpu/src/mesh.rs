@@ -111,6 +111,32 @@ fn resolve_colors(poly_data: &PolyData, coloring: &Coloring) -> Vec<[f32; 3]> {
 
     match coloring {
         Coloring::Solid(color) => vec![*color; n],
+        Coloring::TextureMap { texture } => {
+            // Sample texture at UV coordinates from point data (TCoords)
+            let tcoords = poly_data.point_data().tcoords();
+            let Some(tcoords) = tcoords else {
+                return vec![[1.0, 1.0, 1.0]; n];
+            };
+            let mut colors = vec![[1.0f32, 1.0, 1.0]; n];
+            let mut buf = [0.0f64; 2];
+            let nt = tcoords.num_tuples().min(n);
+            for (i, color) in colors.iter_mut().enumerate().take(nt) {
+                tcoords.tuple_as_f64(i, &mut buf);
+                let u = buf[0].clamp(0.0, 1.0);
+                let v = buf[1].clamp(0.0, 1.0);
+                let px = ((u * (texture.width as f64 - 1.0)) as u32).min(texture.width - 1);
+                let py = (((1.0 - v) * (texture.height as f64 - 1.0)) as u32).min(texture.height - 1);
+                let idx = ((py * texture.width + px) * 4) as usize;
+                if idx + 2 < texture.data.len() {
+                    *color = [
+                        texture.data[idx] as f32 / 255.0,
+                        texture.data[idx + 1] as f32 / 255.0,
+                        texture.data[idx + 2] as f32 / 255.0,
+                    ];
+                }
+            }
+            colors
+        }
         Coloring::ScalarMap { color_map, range } => {
             // Try to get active scalars from point data
             let scalars = poly_data.point_data().scalars();
@@ -169,5 +195,68 @@ fn normalize(v: [f32; 3]) -> [f32; 3] {
         [0.0, 0.0, 1.0]
     } else {
         [v[0] / len, v[1] / len, v[2] / len]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vtk_data::PolyData;
+
+    #[test]
+    fn triangle_to_mesh() {
+        let pd = PolyData::from_triangles(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            vec![[0, 1, 2]],
+        );
+        let (verts, idxs) = poly_data_to_mesh(&pd, &Coloring::Solid([1.0, 0.0, 0.0]));
+        assert_eq!(verts.len(), 3);
+        assert_eq!(idxs.len(), 3);
+        // Check color
+        assert_eq!(verts[0].color, [1.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn quad_fan_triangulation() {
+        let pd = PolyData::from_quads(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
+            vec![[0, 1, 2, 3]],
+        );
+        let (verts, idxs) = poly_data_to_mesh(&pd, &Coloring::Solid([1.0, 1.0, 1.0]));
+        // Quad is fan-triangulated into 2 triangles = 6 vertices
+        assert_eq!(verts.len(), 6);
+        assert_eq!(idxs.len(), 6);
+    }
+
+    #[test]
+    fn empty_mesh() {
+        let pd = PolyData::new();
+        let (verts, idxs) = poly_data_to_mesh(&pd, &Coloring::Solid([1.0, 1.0, 1.0]));
+        assert!(verts.is_empty());
+        assert!(idxs.is_empty());
+    }
+
+    #[test]
+    fn flat_normals_when_no_normals() {
+        let pd = PolyData::from_triangles(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            vec![[0, 1, 2]],
+        );
+        let (verts, _) = poly_data_to_mesh(&pd, &Coloring::Solid([1.0, 1.0, 1.0]));
+        // All vertices should have the same flat normal (0, 0, 1)
+        for v in &verts {
+            assert!((v.normal[2] - 1.0).abs() < 0.01 || (v.normal[2] - (-1.0)).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn resolve_colors_solid() {
+        let pd = PolyData::from_triangles(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            vec![[0, 1, 2]],
+        );
+        let colors = resolve_colors_pub(&pd, &Coloring::Solid([0.5, 0.5, 0.5]));
+        assert_eq!(colors.len(), 3);
+        assert_eq!(colors[0], [0.5, 0.5, 0.5]);
     }
 }

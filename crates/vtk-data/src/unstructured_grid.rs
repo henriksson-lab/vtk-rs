@@ -64,6 +64,42 @@ impl UnstructuredGrid {
     pub fn cell_data_mut(&mut self) -> &mut DataSetAttributes {
         &mut self.cell_data
     }
+
+    /// Create from points and tetrahedra.
+    pub fn from_tetrahedra(points: Vec<[f64; 3]>, tets: Vec<[i64; 4]>) -> Self {
+        let mut ug = Self::new();
+        ug.points = Points::from_vec(points);
+        for tet in &tets {
+            ug.push_cell(CellType::Tetra, tet);
+        }
+        ug
+    }
+
+    /// Create from points and hexahedra.
+    pub fn from_hexahedra(points: Vec<[f64; 3]>, hexes: Vec<[i64; 8]>) -> Self {
+        let mut ug = Self::new();
+        ug.points = Points::from_vec(points);
+        for hex in &hexes {
+            ug.push_cell(CellType::Hexahedron, hex);
+        }
+        ug
+    }
+
+    /// Builder: add a point data array.
+    pub fn with_point_array(mut self, array: crate::AnyDataArray) -> Self {
+        let name = array.name().to_string();
+        self.point_data.add_array(array);
+        if self.point_data.scalars().is_none() {
+            self.point_data.set_active_scalars(&name);
+        }
+        self
+    }
+
+    /// Builder: add a cell data array.
+    pub fn with_cell_array(mut self, array: crate::AnyDataArray) -> Self {
+        self.cell_data.add_array(array);
+        self
+    }
 }
 
 impl DataObject for UnstructuredGrid {
@@ -107,6 +143,13 @@ impl DataSet for UnstructuredGrid {
 
     fn cell_data_mut(&mut self) -> &mut DataSetAttributes {
         &mut self.cell_data
+    }
+}
+
+impl std::fmt::Display for UnstructuredGrid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "UnstructuredGrid: {} points, {} cells, {} point arrays",
+            self.points.len(), self.cells.num_cells(), self.point_data.num_arrays())
     }
 }
 

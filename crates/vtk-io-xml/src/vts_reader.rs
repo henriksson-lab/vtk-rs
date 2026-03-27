@@ -1,10 +1,20 @@
 use std::io::BufRead;
 use std::path::Path;
 
-use vtk_data::{AnyDataArray, DataArray, Points, StructuredGrid};
+use vtk_data::{Points, StructuredGrid};
 use vtk_types::VtkError;
 
+use crate::binary;
+use crate::vtp_reader::{
+    extract_section, extract_attr, parse_attribute_arrays,
+    extract_appended_raw, extract_appended_base64,
+    detect_format, DataFormat, parse_from_appended,
+    data_array_to_points, parse_points_ascii,
+};
+
 /// Reader for VTK XML StructuredGrid format (.vts).
+///
+/// Supports ASCII, binary (base64-encoded), and appended data formats.
 pub struct VtsReader;
 
 impl VtsReader {
@@ -21,6 +31,10 @@ impl VtsReader {
             .map_err(VtkError::Io)?
             .join("\n");
 
+        // Extract appended data section if present
+        let appended_raw = extract_appended_raw(&content);
+        let appended_b64 = extract_appended_base64(&content);
+
         // Parse extent from StructuredGrid tag
         let mut dims = [1usize; 3];
         if let Some(sg_tag) = find_tag(&content, "StructuredGrid") {
@@ -36,12 +50,29 @@ impl VtsReader {
 
         // Parse Points
         let mut points = Points::new();
-        if let Some(pts_data) = extract_data_array_content(&content, "Points") {
-            let values: Vec<f64> = pts_data.split_whitespace().filter_map(|s| s.parse().ok()).collect();
-            for chunk in values.chunks(3) {
-                if chunk.len() == 3 {
-                    points.push([chunk[0], chunk[1], chunk[2]]);
-                }
+        if let Some(points_section) = extract_section(&content, "Points") {
+            if let Some(da_start) = points_section.find("<DataArray") {
+                let tag_end = points_section[da_start..].find('>')
+                    .ok_or_else(|| VtkError::Parse("unclosed DataArray tag".into()))?;
+                let tag = &points_section[da_start..da_start + tag_end + 1];
+                let type_str = extract_attr(tag, "type").unwrap_or_else(|| "Float64".to_string());
+
+                let content_start = da_start + tag_end + 1;
+                let content_end = points_section[content_start..].find("</DataArray>")
+                    .ok_or_else(|| VtkError::Parse("missing </DataArray>".into()))?;
+                let da_content = points_section[content_start..content_start + content_end].trim();
+
+                points = match detect_format(tag) {
+                    DataFormat::Ascii => parse_points_ascii(da_content)?,
+                    DataFormat::Binary => {
+                        let arr = binary::parse_binary_data_array(da_content, "Points", &type_str, 3)?;
+                        data_array_to_points(&arr)?
+                    }
+                    DataFormat::Appended(offset) => {
+                        let arr = parse_from_appended(appended_raw.as_deref(), appended_b64.as_deref(), offset, "Points", &type_str, 3)?;
+                        data_array_to_points(&arr)?
+                    }
+                };
             }
         }
 
@@ -57,12 +88,12 @@ impl VtsReader {
 
         // Parse PointData
         if let Some(pd_section) = extract_section(&content, "PointData") {
-            parse_attribute_arrays(&pd_section, grid.point_data_mut())?;
+            parse_attribute_arrays(&pd_section, grid.point_data_mut(), appended_raw.as_deref(), appended_b64.as_deref())?;
         }
 
         // Parse CellData
         if let Some(cd_section) = extract_section(&content, "CellData") {
-            parse_attribute_arrays(&cd_section, grid.cell_data_mut())?;
+            parse_attribute_arrays(&cd_section, grid.cell_data_mut(), appended_raw.as_deref(), appended_b64.as_deref())?;
         }
 
         Ok(grid)
@@ -74,57 +105,6 @@ fn find_tag(content: &str, tag: &str) -> Option<String> {
     let start = content.find(&pat)?;
     let end = content[start..].find('>')?;
     Some(content[start..start + end + 1].to_string())
-}
-
-fn extract_section(content: &str, tag: &str) -> Option<String> {
-    let open = format!("<{}", tag);
-    let close = format!("</{}>", tag);
-    let start = content.find(&open)?;
-    let te = content[start..].find('>')?;
-    let cs = start + te + 1;
-    let end = content[cs..].find(&close)?;
-    Some(content[cs..cs + end].to_string())
-}
-
-fn extract_data_array_content(content: &str, parent: &str) -> Option<String> {
-    let section = extract_section(content, parent)?;
-    let start = section.find("<DataArray")?;
-    let te = section[start..].find('>')?;
-    let cs = start + te + 1;
-    let end = section[cs..].find("</DataArray>")?;
-    Some(section[cs..cs + end].trim().to_string())
-}
-
-fn extract_attr(tag: &str, name: &str) -> Option<String> {
-    let pat = format!("{}=\"", name);
-    let start = tag.find(&pat)?;
-    let vs = start + pat.len();
-    let end = tag[vs..].find('"')?;
-    Some(tag[vs..vs + end].to_string())
-}
-
-fn parse_attribute_arrays(section: &str, attrs: &mut vtk_data::DataSetAttributes) -> Result<(), VtkError> {
-    let mut sp = 0;
-    while let Some(ds) = section[sp..].find("<DataArray") {
-        let abs = sp + ds;
-        let te = section[abs..].find('>').ok_or_else(|| VtkError::Parse("unclosed tag".into()))?;
-        let tag = &section[abs..abs + te + 1];
-        let cs = abs + te + 1;
-        let ce = section[cs..].find("</DataArray>").ok_or_else(|| VtkError::Parse("missing close".into()))?;
-        let content = section[cs..cs + ce].trim();
-
-        let name = extract_attr(tag, "Name").unwrap_or_else(|| "data".to_string());
-        let nc: usize = extract_attr(tag, "NumberOfComponents").and_then(|s| s.parse().ok()).unwrap_or(1);
-        let values: Vec<f64> = content.split_whitespace().filter_map(|s| s.parse().ok()).collect();
-
-        let arr = AnyDataArray::F64(DataArray::from_vec(&name, values, nc));
-        let arr_name = arr.name().to_string();
-        attrs.add_array(arr);
-        if attrs.scalars().is_none() { attrs.set_active_scalars(&arr_name); }
-
-        sp = cs + ce + "</DataArray>".len();
-    }
-    Ok(())
 }
 
 #[cfg(test)]

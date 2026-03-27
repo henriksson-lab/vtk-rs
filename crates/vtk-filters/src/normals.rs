@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use vtk_data::{CellArray, DataArray, PolyData};
 
 /// Compute normals for a PolyData.
@@ -39,6 +40,52 @@ pub fn compute_cell_normals_only(input: &PolyData) -> PolyData {
     output
 }
 
+/// Compute normals using rayon parallel iteration for cell normals.
+pub fn compute_normals_par(input: &PolyData) -> PolyData {
+    let mut output = input.clone();
+
+    // Collect cells into a Vec so we can parallelize
+    let cells: Vec<Vec<i64>> = input.polys.iter().map(|c| c.to_vec()).collect();
+
+    let cell_normals: Vec<[f64; 3]> = cells
+        .par_iter()
+        .map(|cell| compute_single_cell_normal(&input.points, cell))
+        .collect();
+
+    let point_normals = compute_point_normals(
+        input.points.len(),
+        &input.polys,
+        &cell_normals,
+    );
+
+    output.point_data_mut().add_array(point_normals.into());
+    output.point_data_mut().set_active_normals("Normals");
+    output
+}
+
+fn compute_single_cell_normal(points: &vtk_data::Points<f64>, cell: &[i64]) -> [f64; 3] {
+    if cell.len() < 3 {
+        return [0.0, 0.0, 1.0];
+    }
+    let mut nx = 0.0;
+    let mut ny = 0.0;
+    let mut nz = 0.0;
+    let n = cell.len();
+    for i in 0..n {
+        let pi = points.get(cell[i] as usize);
+        let pj = points.get(cell[(i + 1) % n] as usize);
+        nx += (pi[1] - pj[1]) * (pi[2] + pj[2]);
+        ny += (pi[2] - pj[2]) * (pi[0] + pj[0]);
+        nz += (pi[0] - pj[0]) * (pi[1] + pj[1]);
+    }
+    let len = (nx * nx + ny * ny + nz * nz).sqrt();
+    if len > 1e-10 {
+        [nx / len, ny / len, nz / len]
+    } else {
+        [0.0, 0.0, 1.0]
+    }
+}
+
 fn compute_cell_normals(
     points: &vtk_data::Points<f64>,
     polys: &CellArray,
@@ -46,31 +93,7 @@ fn compute_cell_normals(
     let mut normals = Vec::with_capacity(polys.num_cells());
 
     for cell in polys.iter() {
-        if cell.len() < 3 {
-            normals.push([0.0, 0.0, 1.0]);
-            continue;
-        }
-
-        // Newell's method for polygon normal (handles non-planar polygons)
-        let mut nx = 0.0;
-        let mut ny = 0.0;
-        let mut nz = 0.0;
-        let n = cell.len();
-
-        for i in 0..n {
-            let pi = points.get(cell[i] as usize);
-            let pj = points.get(cell[(i + 1) % n] as usize);
-            nx += (pi[1] - pj[1]) * (pi[2] + pj[2]);
-            ny += (pi[2] - pj[2]) * (pi[0] + pj[0]);
-            nz += (pi[0] - pj[0]) * (pi[1] + pj[1]);
-        }
-
-        let len = (nx * nx + ny * ny + nz * nz).sqrt();
-        if len > 1e-10 {
-            normals.push([nx / len, ny / len, nz / len]);
-        } else {
-            normals.push([0.0, 0.0, 1.0]);
-        }
+        normals.push(compute_single_cell_normal(points, cell));
     }
 
     normals

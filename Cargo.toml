@@ -10,6 +10,11 @@ members = [
     "crates/vtk-render-wgpu",
     "crates/vtk-io-xml",
     "crates/vtk-io-ply",
+    "crates/vtk-io-gltf",
+    "crates/vtk-io-ensight",
+    "crates/vtk-io-xdmf",
+    "crates/vtk-python",
+    "crates/vtk",
 ]
 resolver = "2"
 
@@ -24,6 +29,12 @@ vtk-io-obj = { path = "crates/vtk-io-obj" }
 vtk-render-wgpu = { path = "crates/vtk-render-wgpu" }
 vtk-io-xml = { path = "crates/vtk-io-xml" }
 vtk-io-ply = { path = "crates/vtk-io-ply" }
+vtk-io-gltf = { path = "crates/vtk-io-gltf" }
+vtk-io-ensight = { path = "crates/vtk-io-ensight" }
+vtk-io-xdmf = { path = "crates/vtk-io-xdmf" }
+pyo3 = { version = "0.23", features = ["extension-module"] }
+rayon = "1.10"
+proptest = "1"
 thiserror = "2"
 bytemuck = { version = "1", features = ["derive"] }
 glam = "0.29"
@@ -36,6 +47,7 @@ name = "vtk-rs-examples"
 version = "0.1.0"
 edition = "2021"
 publish = false
+autobenches = false
 
 [dependencies]
 vtk-data = { workspace = true }
@@ -43,6 +55,9 @@ vtk-filters = { workspace = true }
 vtk-io-legacy = { workspace = true }
 vtk-io-stl = { workspace = true }
 vtk-io-obj = { workspace = true }
+vtk-io-xml = { workspace = true }
+vtk-io-ply = { workspace = true }
+vtk-io-gltf = { workspace = true }
 vtk-render = { workspace = true }
 vtk-render-wgpu = { workspace = true }
 winit = { workspace = true }
@@ -63,3 +78,27 @@ path = "examples/isosurface.rs"
 [[example]]
 name = "scalar_colors"
 path = "examples/scalar_colors.rs"
+
+[[example]]
+name = "pipeline_demo"
+path = "examples/pipeline_demo.rs"
+
+[[example]]
+name = "showcase"
+path = "examples/showcase.rs"
+
+[[example]]
+name = "volume"
+path = "examples/volume.rs"
+
+[[example]]
+name = "mesh_info"
+path = "examples/mesh_info.rs"
+
+[[example]]
+name = "headless_render"
+path = "examples/headless_render.rs"
+
+[[example]]
+name = "bench_filters"
+path = "benches/filters.rs"

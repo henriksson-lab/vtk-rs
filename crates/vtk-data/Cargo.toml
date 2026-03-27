@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 vtk-types = { workspace = true }
 bytemuck = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

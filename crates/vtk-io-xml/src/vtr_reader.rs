@@ -1,10 +1,19 @@
 use std::io::BufRead;
 use std::path::Path;
 
-use vtk_data::{AnyDataArray, DataArray, RectilinearGrid};
+use vtk_data::RectilinearGrid;
 use vtk_types::VtkError;
 
+use crate::binary;
+use crate::vtp_reader::{
+    extract_section, extract_attr, parse_attribute_arrays,
+    extract_appended_raw, extract_appended_base64,
+    detect_format, DataFormat, parse_from_appended,
+};
+
 /// Reader for VTK XML RectilinearGrid format (.vtr).
+///
+/// Supports ASCII, binary (base64-encoded), and appended data formats.
 pub struct VtrReader;
 
 impl VtrReader {
@@ -20,6 +29,10 @@ impl VtrReader {
             .collect::<Result<Vec<_>, _>>()
             .map_err(VtkError::Io)?
             .join("\n");
+
+        // Extract appended data section if present
+        let appended_raw = extract_appended_raw(&content);
+        let appended_b64 = extract_appended_base64(&content);
 
         let mut x_coords = vec![0.0];
         let mut y_coords = vec![0.0];
@@ -37,7 +50,21 @@ impl VtrReader {
                 let da_content = coords_section[content_start..content_start + content_end].trim();
 
                 let name = extract_attr(tag, "Name").unwrap_or_default();
-                let values: Vec<f64> = da_content.split_whitespace().filter_map(|s| s.parse().ok()).collect();
+                let type_str = extract_attr(tag, "type").unwrap_or_else(|| "Float64".to_string());
+
+                let values: Vec<f64> = match detect_format(tag) {
+                    DataFormat::Ascii => {
+                        da_content.split_whitespace().filter_map(|s| s.parse().ok()).collect()
+                    }
+                    DataFormat::Binary => {
+                        let arr = binary::parse_binary_data_array(da_content, &name, &type_str, 1)?;
+                        any_data_array_to_f64(&arr)
+                    }
+                    DataFormat::Appended(offset) => {
+                        let arr = parse_from_appended(appended_raw.as_deref(), appended_b64.as_deref(), offset, &name, &type_str, 1)?;
+                        any_data_array_to_f64(&arr)
+                    }
+                };
 
                 match name.as_str() {
                     "x" => x_coords = values,
@@ -58,60 +85,29 @@ impl VtrReader {
 
         // Parse PointData
         if let Some(pd_section) = extract_section(&content, "PointData") {
-            parse_attribute_arrays(&pd_section, grid.point_data_mut())?;
+            parse_attribute_arrays(&pd_section, grid.point_data_mut(), appended_raw.as_deref(), appended_b64.as_deref())?;
         }
 
         // Parse CellData
         if let Some(cd_section) = extract_section(&content, "CellData") {
-            parse_attribute_arrays(&cd_section, grid.cell_data_mut())?;
+            parse_attribute_arrays(&cd_section, grid.cell_data_mut(), appended_raw.as_deref(), appended_b64.as_deref())?;
         }
 
         Ok(grid)
     }
 }
 
-fn extract_section(content: &str, tag: &str) -> Option<String> {
-    let open = format!("<{}", tag);
-    let close = format!("</{}>", tag);
-    let start = content.find(&open)?;
-    let tag_end = content[start..].find('>')?;
-    let cs = start + tag_end + 1;
-    let end = content[cs..].find(&close)?;
-    Some(content[cs..cs + end].to_string())
-}
-
-fn extract_attr(tag: &str, name: &str) -> Option<String> {
-    let pat = format!("{}=\"", name);
-    let start = tag.find(&pat)?;
-    let vs = start + pat.len();
-    let end = tag[vs..].find('"')?;
-    Some(tag[vs..vs + end].to_string())
-}
-
-fn parse_attribute_arrays(section: &str, attrs: &mut vtk_data::DataSetAttributes) -> Result<(), VtkError> {
-    let mut search_pos = 0;
-    while let Some(da_start) = section[search_pos..].find("<DataArray") {
-        let abs_start = search_pos + da_start;
-        let tag_end = section[abs_start..].find('>').ok_or_else(|| VtkError::Parse("unclosed tag".into()))?;
-        let tag = &section[abs_start..abs_start + tag_end + 1];
-        let cs = abs_start + tag_end + 1;
-        let ce = section[cs..].find("</DataArray>").ok_or_else(|| VtkError::Parse("missing close".into()))?;
-        let content = section[cs..cs + ce].trim();
-
-        let name = extract_attr(tag, "Name").unwrap_or_else(|| "data".to_string());
-        let nc: usize = extract_attr(tag, "NumberOfComponents").and_then(|s| s.parse().ok()).unwrap_or(1);
-        let values: Vec<f64> = content.split_whitespace().filter_map(|s| s.parse().ok()).collect();
-
-        let arr = AnyDataArray::F64(DataArray::from_vec(&name, values, nc));
-        let arr_name = arr.name().to_string();
-        attrs.add_array(arr);
-        if attrs.scalars().is_none() {
-            attrs.set_active_scalars(&arr_name);
-        }
-
-        search_pos = cs + ce + "</DataArray>".len();
+/// Extract f64 values from any data array.
+fn any_data_array_to_f64(arr: &vtk_data::AnyDataArray) -> Vec<f64> {
+    let nt = arr.num_tuples();
+    let nc = arr.num_components();
+    let mut result = Vec::with_capacity(nt * nc);
+    let mut buf = vec![0.0f64; nc];
+    for i in 0..nt {
+        arr.tuple_as_f64(i, &mut buf);
+        result.extend_from_slice(&buf);
     }
-    Ok(())
+    result
 }
 
 #[cfg(test)]

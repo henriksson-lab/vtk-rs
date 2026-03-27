@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use vtk_data::{DataArray, DataSet, PolyData};
 
 /// Compute an elevation scalar for each point, measuring distance along an axis.
@@ -35,6 +36,44 @@ pub fn elevation(
         scalars.push_tuple(&[t]);
     }
 
+    output.point_data_mut().add_array(scalars.into());
+    output.point_data_mut().set_active_scalars("Elevation");
+    output
+}
+
+/// Parallel version of `elevation` using rayon.
+pub fn elevation_par(
+    input: &PolyData,
+    low_point: [f64; 3],
+    high_point: [f64; 3],
+) -> PolyData {
+    let mut output = input.clone();
+
+    let dir = [
+        high_point[0] - low_point[0],
+        high_point[1] - low_point[1],
+        high_point[2] - low_point[2],
+    ];
+    let len2 = dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2];
+
+    let values: Vec<f64> = (0..input.num_points())
+        .into_par_iter()
+        .map(|i| {
+            let p = input.point(i);
+            let dp = [
+                p[0] - low_point[0],
+                p[1] - low_point[1],
+                p[2] - low_point[2],
+            ];
+            if len2 > 1e-20 {
+                (dp[0] * dir[0] + dp[1] * dir[1] + dp[2] * dir[2]) / len2
+            } else {
+                0.0
+            }
+        })
+        .collect();
+
+    let scalars = DataArray::<f64>::from_vec("Elevation", values, 1);
     output.point_data_mut().add_array(scalars.into());
     output.point_data_mut().set_active_scalars("Elevation");
     output

@@ -1,3 +1,24 @@
+//! Geometry sources, processing filters, and utilities for vtk-rs.
+//!
+//! # Quick Start
+//!
+//! ```
+//! use vtk_data::PolyData;
+//! use vtk_filters::sources::sphere::{sphere, SphereParams};
+//! use vtk_filters::normals::compute_normals;
+//! use vtk_filters::elevation::elevation_z;
+//! use vtk_filters::pipeline::Pipeline;
+//!
+//! // Generate a sphere and process it
+//! let src = sphere(&SphereParams::default());
+//! let mut pipe = Pipeline::new(src)
+//!     .with_normals()
+//!     .with_elevation_z();
+//! let result = pipe.output();
+//! assert!(result.points.len() > 0);
+//! assert!(result.point_data().scalars().is_some());
+//! ```
+
 pub mod sources;
 pub mod normals;
 pub mod triangulate;
@@ -559,3 +580,24 @@ pub mod mesh_smooth_hc;
 pub mod mesh_geodesic_distance_heat;
 pub mod image_bilateral_filter;
 pub mod mesh_extract_sharp_features;
+pub mod mesh_resample_on_grid;
+pub mod mesh_principal_curvatures;
+pub mod image_watershed_simple;
+pub mod mesh_thinning;
+pub mod mesh_marching_squares;
+pub mod mesh_voronoi_diagram_2d;
+pub mod image_connected_components_count;
+pub mod mesh_delaunay_triangulate_2d;
+pub mod pipeline;
+pub mod convert;
+pub mod selection_extract;
+pub mod topology;
+pub mod io_utils;
+pub mod merge;
+pub mod seed_strategy;
+pub mod extract_by_type;
+pub mod quick;
+pub mod clip_implicit;
+pub mod sample_implicit;
+pub mod validate;
+pub mod mesh_diff;

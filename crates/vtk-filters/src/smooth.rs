@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use rayon::prelude::*;
 use vtk_data::PolyData;
 
 /// Laplacian smoothing of a PolyData mesh.
@@ -71,6 +72,86 @@ pub fn smooth(
                 p[2] + factor * (avg[2] - p[2]),
             ]);
         }
+
+        for (i, &pos) in new_positions.iter().enumerate() {
+            output.points.set(i, pos);
+        }
+    }
+
+    output
+}
+
+/// Parallel Laplacian smoothing using rayon.
+///
+/// The inner loop over vertices is parallelized. Adjacency is built once,
+/// then each iteration uses `par_iter` to compute new positions.
+pub fn smooth_par(
+    input: &PolyData,
+    iterations: usize,
+    relaxation_factor: f64,
+    fix_boundary: bool,
+) -> PolyData {
+    let mut output = input.clone();
+    let n = output.points.len();
+    if n == 0 || iterations == 0 {
+        return output;
+    }
+
+    // Build adjacency as Vec<Vec<usize>> for Send+Sync
+    let mut neighbors: Vec<Vec<usize>> = vec![Vec::new(); n];
+    for cell in input.polys.iter() {
+        let len = cell.len();
+        for j in 0..len {
+            let a = cell[j] as usize;
+            let b = cell[(j + 1) % len] as usize;
+            neighbors[a].push(b);
+            neighbors[b].push(a);
+        }
+    }
+    // Deduplicate
+    for nbrs in &mut neighbors {
+        nbrs.sort_unstable();
+        nbrs.dedup();
+    }
+
+    let boundary = if fix_boundary {
+        find_boundary_vertices(input)
+    } else {
+        HashSet::new()
+    };
+
+    let factor = relaxation_factor.clamp(0.0, 1.0);
+
+    for _ in 0..iterations {
+        // Snapshot current positions
+        let current: Vec<[f64; 3]> = (0..n).map(|i| output.points.get(i)).collect();
+
+        let new_positions: Vec<[f64; 3]> = (0..n)
+            .into_par_iter()
+            .map(|i| {
+                let p = current[i];
+                let nbrs = &neighbors[i];
+                if boundary.contains(&i) || nbrs.is_empty() {
+                    return p;
+                }
+                let mut avg = [0.0f64; 3];
+                let count = nbrs.len() as f64;
+                for &nb in nbrs {
+                    let q = current[nb];
+                    avg[0] += q[0];
+                    avg[1] += q[1];
+                    avg[2] += q[2];
+                }
+                avg[0] /= count;
+                avg[1] /= count;
+                avg[2] /= count;
+                [
+                    p[0] + factor * (avg[0] - p[0]),
+                    p[1] + factor * (avg[1] - p[1]),
+                    p[2] + factor * (avg[2] - p[2]),
+                ]
+            })
+            .collect();
 
         for (i, &pos) in new_positions.iter().enumerate() {
             output.points.set(i, pos);

@@ -1,4 +1,11 @@
+pub(crate) mod binary;
 mod vtp_writer;
+mod vtp_binary_writer;
+mod vtu_binary_writer;
+mod vti_binary_writer;
+mod vtr_binary_writer;
+mod vts_binary_writer;
+mod vtm_reader;
 mod vtp_reader;
 mod vtu_writer;
 mod vtu_reader;
@@ -11,6 +18,12 @@ mod vts_reader;
 mod vtm_writer;
 
 pub use vtp_writer::VtpWriter;
+pub use vtp_binary_writer::VtpBinaryWriter;
+pub use vtu_binary_writer::VtuBinaryWriter;
+pub use vti_binary_writer::VtiBinaryWriter;
+pub use vtr_binary_writer::VtrBinaryWriter;
+pub use vts_binary_writer::VtsBinaryWriter;
+pub use vtm_reader::VtmReader;
 pub use vtp_reader::VtpReader;
 pub use vtu_writer::VtuWriter;
 pub use vtu_reader::VtuReader;

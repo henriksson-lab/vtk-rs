@@ -1,4 +1,4 @@
-use crate::{PolyData, Points};
+use crate::PolyData;
 
 /// Spatial locator for finding cells in a PolyData mesh.
 ///

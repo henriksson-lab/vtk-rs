@@ -35,6 +35,9 @@ pub mod cross;
 pub mod boy_surface;
 pub mod spiral;
 pub mod icosphere;
+pub mod mobius_strip;
+pub mod gear;
+pub mod grid_2d;
 
 pub use sphere::sphere;
 pub use cube::cube;
@@ -70,3 +73,6 @@ pub use cross::cross;
 pub use boy_surface::boy_surface;
 pub use spiral::spiral;
 pub use icosphere::icosphere;
+pub use mobius_strip::mobius_strip;
+pub use gear::gear;
+pub use grid_2d::grid_2d;
