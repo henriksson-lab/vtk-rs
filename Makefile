@@ -14,7 +14,7 @@ gen-mods:
 	@for f in crates/vtk-filters/src/image/*.rs; do \
 		b=$$(basename "$$f" .rs); \
 		if [ "$$b" != "mod" ]; then \
-			echo "pub mod $$b; pub use $$b::*;" >> crates/vtk-filters/src/image/mod.rs; \
+			echo "pub mod $$b;" >> crates/vtk-filters/src/image/mod.rs; \
 		fi; \
 	done
 	@echo '//! Mesh processing filters.' > crates/vtk-filters/src/mesh/mod.rs
@@ -22,7 +22,7 @@ gen-mods:
 	@for f in crates/vtk-filters/src/mesh/*.rs; do \
 		b=$$(basename "$$f" .rs); \
 		if [ "$$b" != "mod" ]; then \
-			echo "pub mod $$b; pub use $$b::*;" >> crates/vtk-filters/src/mesh/mod.rs; \
+			echo "pub mod $$b;" >> crates/vtk-filters/src/mesh/mod.rs; \
 		fi; \
 	done
 	@echo '//! Geometry sources.' > crates/vtk-filters/src/sources/mod.rs
@@ -30,7 +30,7 @@ gen-mods:
 	@for f in crates/vtk-filters/src/sources/*.rs; do \
 		b=$$(basename "$$f" .rs); \
 		if [ "$$b" != "mod" ]; then \
-			echo "pub mod $$b; pub use $$b::*;" >> crates/vtk-filters/src/sources/mod.rs; \
+			echo "pub mod $$b;" >> crates/vtk-filters/src/sources/mod.rs; \
 		fi; \
 	done
 	@echo "Generated mod.rs for image/ mesh/ sources/"

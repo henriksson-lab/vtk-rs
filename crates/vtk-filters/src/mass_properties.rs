@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn cube_properties() {
-        let cube = sources::cube(&Default::default());
+        let cube = sources::cube::cube(&Default::default());
         // Triangulate the cube first
         let tri_cube = crate::triangulate::triangulate(&cube);
         let props = mass_properties(&tri_cube);
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn sphere_area() {
-        let sphere = sources::sphere(&sources::sphere::SphereParams {
+        let sphere = sources::sphere::sphere(&sources::sphere::SphereParams {
             radius: 1.0,
             theta_resolution: 32,
             phi_resolution: 32,

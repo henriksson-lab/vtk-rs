@@ -1,8 +1,7 @@
 use vtk_data::PolyData;
 
-use super::{cone, cylinder};
-use crate::sources::cone::ConeParams;
-use crate::sources::cylinder::CylinderParams;
+use crate::sources::cone::{cone, ConeParams};
+use crate::sources::cylinder::{cylinder, CylinderParams};
 
 /// Parameters for generating an arrow (cylinder shaft + cone tip).
 pub struct ArrowParams {

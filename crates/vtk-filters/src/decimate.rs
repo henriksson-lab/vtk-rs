@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn decimate_sphere() {
-        let sphere = sources::sphere(&sources::sphere::SphereParams {
+        let sphere = sources::sphere::sphere(&sources::sphere::SphereParams {
             theta_resolution: 16,
             phi_resolution: 16,
             ..Default::default()
