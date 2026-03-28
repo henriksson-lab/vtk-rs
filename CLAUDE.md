@@ -27,12 +27,22 @@ cargo run --release --example bench_filters  # performance benchmarks
 crates/
   vtk-types/       # Scalar trait, ScalarType, CellType (46 types), VtkError, BoundingBox, ImplicitFunction, higher_order
   vtk-data/        # DataArray, CellArray, Points, FieldData, DataSetAttributes, PolyData, ImageData, UnstructuredGrid, RectilinearGrid, StructuredGrid, MultiBlockDataSet, Table, KdTree, OctreePointLocator, CellLocator, Selection, Graph, Tree, ExplicitStructuredGrid, HyperTreeGrid, Molecule
-  vtk-filters/     # 575 filters + 40 sources + pipeline + convert + topology + merge + selection_extract + io_utils
+  vtk-filters/     # 777 filters + 62 sources + pipeline + convert + topology + merge + selection_extract + io_utils
   vtk-io-legacy/   # VTK legacy format (.vtk) ASCII/binary reader and writer
   vtk-io-stl/      # STL format ASCII/binary reader and writer
   vtk-io-obj/      # Wavefront OBJ format reader and writer
   vtk-io-xml/      # VTK XML format reader/writer (.vtp, .vtu, .vti, .vtr, .vts, .vtm) — ASCII + binary
   vtk-io-ply/      # Stanford PLY format ASCII and binary reader and writer
+  vtk-io-off/      # Object File Format (OFF/COFF) ASCII reader and writer
+  vtk-io-dxf/      # AutoCAD DXF format reader and writer (3DFACE + LINE)
+  vtk-io-geojson/  # GeoJSON format reader and writer (Point, LineString, Polygon)
+  vtk-io-csv/      # CSV/TSV format reader and writer with flexible delimiters
+  vtk-io-byu/      # BYU Movie format reader and writer
+  vtk-io-las/      # LAS 1.2 LIDAR point cloud reader and writer
+  vtk-io-facet/    # Facet file format reader and writer
+  vtk-io-segy/     # SEG-Y seismic data format reader
+  vtk-io-tecplot/  # Tecplot ASCII data format reader and writer
+  vtk-io-fits/     # FITS astronomy image format reader and writer
   vtk-io-gltf/     # glTF 2.0 binary (.glb) reader and writer
   vtk-io-ensight/  # EnSight Gold ASCII reader/writer + LS-DYNA keyword reader
   vtk-io-xdmf/     # XDMF writer (inline XML data for PolyData + ImageData)
@@ -51,11 +61,11 @@ examples/
 VTK/               # C++ 9.6.0 reference source (read-only)
 ```
 
-**Dependency graph:** `vtk-render-wgpu → vtk-render → vtk-data → vtk-types`, `vtk-filters → vtk-data + vtk-io-*`, `vtk-io-{legacy,stl,obj,xml,ply,gltf,ensight,xdmf} → vtk-data → vtk-types`
+**Dependency graph:** `vtk-render-wgpu → vtk-render → vtk-data → vtk-types`, `vtk-filters → vtk-data + vtk-io-*`, `vtk-io-{legacy,stl,obj,xml,ply,gltf,ensight,xdmf,off,dxf,geojson,csv,byu,las} → vtk-data → vtk-types`
 
 ### Key vtk-filters modules
 
-**Sources (40):** sphere, cube, cone, cylinder, plane, arrow, disk, line, point_source, regular_polygon, arc, superquadric, platonic_solid, frustum, parametric, bounding_box_source, axes, torus, helix, ellipsoid, spring, capsule, geodesic_sphere, grid, text_3d, wavelet, circle, mobius, star, noise_field, ring, klein_bottle, trefoil_knot, cross, boy_surface, spiral, icosphere, mobius_strip, gear, grid_2d
+**Sources (42):** sphere, cube, cone, cylinder, plane, arrow, disk, line, point_source, regular_polygon, arc, superquadric, platonic_solid, frustum, parametric, bounding_box_source, axes, torus, helix, ellipsoid, spring, capsule, geodesic_sphere, grid, text_3d, wavelet, circle, mobius, star, noise_field, ring, klein_bottle, trefoil_knot, cross, boy_surface, spiral, icosphere, mobius_strip, gear, grid_2d, earth, sector
 
 **Infrastructure:** pipeline (lazy evaluation + caching), convert (dataset conversions), topology (manifold/euler/boundary analysis), merge (combine meshes), selection_extract (apply selections), io_utils (auto-format read/write)
 

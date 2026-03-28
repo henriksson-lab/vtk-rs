@@ -13,3 +13,4 @@ vtk-io-obj = { workspace = true }
 vtk-io-xml = { workspace = true }
 vtk-io-ply = { workspace = true }
 vtk-io-gltf = { workspace = true }
+vtk-io-off = { workspace = true }

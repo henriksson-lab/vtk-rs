@@ -2,7 +2,7 @@
 
 Feature tracking for vtk-rs — a pure Rust reimplementation of VTK.
 
-Last updated: 2026-03-27 | Tests: 2444 | Clippy: clean (PartialEq on all major data types)
+Last updated: 2026-03-27 | ~132K lines Rust | Tests: 3284 | Clippy: clean | Coverage: ~10% of VTK C++ (1M lines)
 
 ---
 
@@ -44,7 +44,7 @@ Last updated: 2026-03-27 | Tests: 2444 | Clippy: clean (PartialEq on all major d
 
 ---
 
-## Geometry Sources (40 / ~40 in VTK)
+## Geometry Sources (62 / ~40 in VTK)
 
 ### Implemented
 
@@ -91,12 +91,34 @@ Last updated: 2026-03-27 | Tests: 2444 | Clippy: clean (PartialEq on all major d
 - [x] `mobius_strip` — Möbius strip surface variant
 - [x] `gear` — gear/cog wheel polygon
 - [x] `grid_2d` — 2D grid with configurable resolution
+- [x] `earth` — Earth globe sphere with latitude/longitude arrays and equirectangular UV
+- [x] `sector` — Sector (pie-slice) or annular sector in XY plane
+- [x] `arrow_2d` — 2D arrow polygon glyph for vector field visualization
+- [x] `prism` — Triangular/hexagonal prism with caps and sides
+- [x] `hemisphere` — Hemisphere with configurable resolution and optional cap
+- [x] `annulus` — Flat ring (annulus) in XY plane
+- [x] `stadium` — Rounded rectangle (discorectangle) in XY plane
+- [x] `lens` — Biconvex lens shape from intersecting sphere caps
+- [x] `superellipse` — 2D superellipse + 3D superellipsoid with configurable exponents
+- [x] `pyramid` — Square-base pyramid + truncated pyramid (frustum)
+- [x] `polygon_extrude` — Extrude 2D polygon to 3D solid along Z or arbitrary direction
+- [x] `wave_surface` — Sine wave + ripple (concentric wave) parametric surfaces
+- [x] `terrain` — Procedural terrain generation (fBm value noise + ridged multifractal)
+- [x] `cloth` — Cloth simulation mesh with mass/fixed arrays + spring-mass simulation step
+- [x] `arrow_3d` — 3D arrow from point A to B with shaft cylinder + cone tip
+- [x] `heightfield` — Mesh from 2D function f(x,y)→z or flat Z-value array
+- [x] `coordinate_axes` — RGB-colored XYZ axes with optional arrowhead cones
+- [x] `grid_3d` — 3D structured grid surface (boundary quads) and wireframe
+- [x] `torus_knot` — (p,q) torus knot tube geometry with configurable radii
+- [x] `spiral_surface` — Logarithmic spiral surface + spiral curve
+- [x] `catenary` — Catenary curve, catenoid minimal surface, bridge cable
+- [x] `seashell` — Parametric seashell/nautilus with spiral growth model
 
 ### Not Yet Implemented
 
 ---
 
-## Processing Filters (568 / ~300+ in VTK)
+## Processing Filters (777 / ~300+ in VTK)
 
 ### Implemented
 
@@ -1026,15 +1048,120 @@ Last updated: 2026-03-27 | Tests: 2444 | Clippy: clean (PartialEq on all major d
 | `mesh_dual_graph` | Face adjacency dual graph as lines between centroids |
 | `mesh_sharp_edges` | Sharp edge detection by dihedral angle |
 
-### High-Priority — Not Yet Implemented
+### Not Yet Implemented — VTK C++ Filters by Category
 
-### Lower-Priority — Not Yet Implemented
+#### Flow Visualization (VTK/Filters/FlowPaths — 21 filters)
+- [x] `particle_tracer` — Time-dependent particle advection through vector fields (steady + temporal RK4)
+- [x] `particle_path_filter` — RK4 particle pathlines with speed/time/particle ID arrays
+- [x] `streak_line` — Streakline computation for unsteady flows (RK2, multi-seed)
+- [x] `temporal_stream_tracer` — Temporally interpolated streamlines between consecutive fields
+- [x] `lagrangian_particle_tracker` — Euler-step tracking with age, distance, speed accumulation
+- [x] `bsp_tree` — BSP tree for fast spatial cell location with nearest-cell queries
+- [x] `interpolated_velocity_field` — VelocityField trait, ImageData + composite multi-block fields, RK4 integration
+- [x] `vector_field_topology` — Critical points (source/sink/saddle/center), vorticity computation
+- [x] `even_spaced_streamlines_2d` — Evenly-spaced streamline seeding (Jobard-Lefer, RK2)
 
-- [x] `temporal_interpolator` — Interpolate between time steps
+#### Statistics (VTK/Filters/Statistics — 25 filters)
+- [x] `descriptive_statistics` — Mean, variance, skewness, kurtosis, percentiles, correlation matrix
+- [x] `correlative_statistics` — Covariance/Pearson/Spearman correlation matrices
+- [x] `multi_correlative_statistics` — Multivariate stats, Mahalanobis distance, outlier detection
+- [x] `principal_component_analysis` — PCA with power iteration, projection, explained variance
+- [x] `kmeans_statistics` — K-means clustering (k-means++ init, points + tables)
+- [x] `contingency_statistics` — Contingency tables with chi-squared and Cramér's V
+- [x] `order_statistics` — Quantiles, ranks (with ties), IQR outlier detection
+- [x] `compute_quartiles` — Quartiles, IQR, fences, five-number summary
+- [x] `high_dimensional_histogram` — N-D histogram with bin centers and 2D table output
+- [x] `auto_correlative_statistics` — Autocorrelation + partial autocorrelation (Durbin-Levinson)
+
+#### Parallel & Distributed (VTK/Filters/Parallel — 62 filters)
+- [x] `parallel_for` — Rayon parallel map/transform/reduce over points and voxels
+- [x] `ghost_cells` — Ghost cell generation for domain decomposition + mesh partitioning
+- [x] `process_id_scalars` — Process/partition ID labeling + tag-and-merge
+- [x] `redistribute_data_set` — Spatial-sort partitioning of points and cells with balance metric
+- [x] `d3_decomposition` — K-d tree recursive bisection for points and cells
+- [x] `aggregate_dataset` — Merge PolyData/Tables, vertical concat, cross-table statistics
+- [x] `piece_request` — Streaming/chunked data: compute pieces, extract sub-regions, stream processing
+
+#### Adaptive Mesh Refinement (VTK/Filters/AMR — 7 filters)
+- [x] `amr_resample_filter` — Resample ImageData onto HTG coarse cells with averaging
+- [x] `amr_slice_filter` — Axis-aligned slice through HTG as PolyData quads
+- [x] `amr_connectivity` — Flood-fill connected regions on HTG coarse grid with threshold
+- [x] `amr_to_multi_block` — HTG to MultiBlock + MultiBlock to uniform ImageData
+
+#### HyperTree Grid (VTK/Filters/HyperTree — 29 filters)
+- [x] `hyper_tree_grid_contour` — Isovalue contour on HTG coarse cell interfaces
+- [x] `hyper_tree_grid_slice` — Arbitrary-plane slice through HTG with polygon intersection
+- [x] `hyper_tree_grid_to_unstructured` — Convert HTG coarse cells to quads (2D) or hexahedra (3D)
+- [x] `hyper_tree_grid_threshold` — Scalar threshold with mask array on HTG cell data
+- [x] `hyper_tree_grid_gradient` — Central-difference gradient (X/Y/Z + magnitude) on HTG
+- [x] `hyper_tree_grid_cell_centers` — Cell centers + geometry + to_image_data conversion
+- [x] `hyper_tree_grid_depth_limiter` — Resolution limiting, depth stats, uniform grid conversion
+- [x] `hyper_tree_grid_geometry` — Extract coarse-grid surface as PolyData quads
+
+#### Point Cloud Processing (VTK/Filters/Points — 42 filters, partially covered)
+- [x] `point_interpolator` — Kernel-based point interpolation (Gaussian, Shepard, IDW, SPH cubic spline)
+- [x] `sph_interpolator` — SPH interpolation (cubic spline, Wendland C2, quintic) + density
+- [x] `point_occupancy` — Voxel occupancy grid from points (count + binary)
+- [x] `point_smoothing` — K-NN geometric position + scalar smoothing
+- [x] `signed_distance_field_par` — Parallel SDF from oriented point clouds (rayon)
+- [x] `fit_implicit_function` — Fit quadric surface + plane to point cloud (least-squares)
+- [x] `extract_enclosed_points` — Ray-cast inside/outside test against closed surface
+- [x] `extract_hierarchical_bins` — Morton-code octree binning with extract and count
+- [x] `radii_to_scalars` — Distance from center/centroid, normalized radii
+- [x] `voronoi_gaussian_kernel` — Voronoi (IDW), Gaussian, and Epanechnikov kernel interpolation + KDE
+
+#### Modeling (VTK/Filters/Modeling — 36 filters, partially covered)
+- [x] `collision_detection` — Collision detection between triangle meshes (AABB + SAT)
+- [x] `select_polygon` — Select/extract cells and points inside 2D polygon
+- [x] `cookie_cutter` — Cut surface by polygon or circle outline
+- [x] `project_sphere` — Radial projection onto sphere with spherical coordinates
+- [x] `earth` source — Earth globe geometry with latitude/longitude data + equirectangular UV
+- [x] `sector` source — Sector/pie-slice geometry (filled + annular)
+- [x] `outline_filter` — Wireframe bounding box for PolyData/ImageData/RectilinearGrid/UnstructuredGrid
+
+#### Extraction (VTK/Filters/Extraction — 30 filters, partially covered)
+- [x] `extract_time_steps` — Extract by index/time/range, subsample every Nth, snap to nearest
+- [x] `extract_block` — Extract block by index/name, merge/flatten multi-block
+- [x] `extract_data_over_time` — Extract scalars + position at closest point across time steps
+- [x] `extract_rectilinear_grid` — Sub-grid extraction by index or coordinate ranges
+- [x] `extract_unstructured_grid` — Extract by cell type, predicate, or index list
+- [x] `extract_geometry` — Extract surface geometry from any dataset type to PolyData
+
+#### Hybrid (VTK/Filters/Hybrid — 26 filters)
+- [x] `weighted_transform` — Multi-transform blending + skeletal per-vertex bone weights
+- [x] `depth_sort_poly_data` — Painter's algorithm depth sorting (in depth_peeling module)
+- [x] `image_to_points` — ImageData to point cloud with optional scalar threshold
+- [x] `poly_data_silhouette` — View-dependent silhouette edges (parallel + perspective)
+- [x] `temporal_snap_to_time_step` — Snap to nearest available time step (in extract_time_steps)
+- [x] `force_directed_layout` — Fruchterman-Reingold graph layout with degree data
+- [x] `render_large_image` — Tile computation, RGBA compositing, and frustum adjustment for tiled rendering
+
+#### Geometry (VTK/Filters/Geometry — 23 filters, partially covered)
+- [x] `linear_to_quadratic` — Upgrade linear triangles to quadratic (6-node) with midpoint interpolation
+- [x] `mark_boundary` — Mark boundary points/cells/edges with data arrays
+- [x] `structured_grid_partitioner` — Partition along longest dimension with balance metric
+- [x] `unstructured_grid_geometry` — Extract boundary/all/typed faces from UnstructuredGrid
+
+#### Texture (VTK/Filters/Texture — 8 filters)
+- [x] `texture_map_to_cylinder` — Cylindrical texture projection (manual + auto axis)
+- [x] `texture_map_to_sphere_full` — Spherical texture mapping with seam correction (vertex duplication)
+- [x] `transform_texture_coords` — Translate/scale/rotate/flip/tile/wrap/clamp UV coords
+- [x] `threshold_texture_coords` — Scalar-to-UV mapping (linear, range, binary threshold)
+
+#### Meshing (VTK/Filters/Meshing — 13 filters)
+- [x] `quadric_decimation` — Garland-Heckbert with boundary preservation and topology checks
+- [x] `constrained_smooth` — Boundary-fixed, displacement-limited, and normal-only smoothing
+- [x] `incremental_octree` — Dynamic insert octree with nearest-neighbor and radius queries
+
+#### Generic Data Handling (VTK/Filters/Generic — 9 filters)
+- [x] `generic_clip` — Clip any dataset type (dispatches to PolyData conversion + clip_by_plane)
+- [x] `generic_contour` — Contour any dataset type (dispatches to PolyData + contour)
+- [x] `generic_cutter` — Cut any dataset type (dispatches to PolyData + slice_by_plane)
+- [x] `generic_glyph` — Glyph any dataset type (dispatches to PolyData + glyph)
 
 ---
 
-## I/O Formats (11 / ~60+ in VTK)
+## I/O Formats (21 / ~60+ in VTK)
 
 ### Implemented
 
@@ -1053,23 +1180,57 @@ Last updated: 2026-03-27 | Tests: 2444 | Clippy: clean (PartialEq on all major d
 | VTK XML `.vtm` | vtk-io-xml | yes | yes | MultiBlock index file with block loading |
 | EnSight Gold | vtk-io-ensight | yes | yes | ASCII case + geo + scalar/vector files |
 | XDMF `.xdmf` | vtk-io-xdmf | | yes | XML with inline data for PolyData + ImageData |
+| OFF `.off` | vtk-io-off | yes | yes | Object File Format ASCII + COFF vertex colors |
+| DXF `.dxf` | vtk-io-dxf | yes | yes | AutoCAD DXF (3DFACE + LINE entities) |
+| GeoJSON `.geojson` | vtk-io-geojson | yes | yes | Point, LineString, Polygon features |
+| CSV/TSV `.csv/.tsv` | vtk-io-csv | yes | yes | Flexible delimiter, quoted fields, point import |
+| BYU `.byu` | vtk-io-byu | yes | yes | BYU Movie format, 1-based polygon connectivity |
+| LAS `.las` | vtk-io-las | yes | yes | LAS 1.2, intensity + classification, scale/offset |
+| Facet `.facet` | vtk-io-facet | yes | yes | Simple vertex + triangle connectivity format |
+| SEG-Y `.sgy` | vtk-io-segy | yes | | SEG-Y rev 1 seismic traces as ImageData or points |
+| Tecplot `.dat` | vtk-io-tecplot | yes | yes | Tecplot ASCII FEPOINT zones with variables |
+| FITS `.fits` | vtk-io-fits | yes | yes | 2D/3D image, multiple BITPIX, BSCALE/BZERO |
 
 ### High-Priority — Not Yet Implemented
 
 - [x] VTK XML binary/appended — Base64 binary read + write for all 5 XML formats (.vtp/.vtu/.vti/.vtr/.vts), appended-data reader
 - [x] glTF `.glb` — Binary glTF 2.0 writer for PolyData (positions, normals, triangles)
 
-### Lower-Priority — Not Yet Implemented
+### Not Yet Implemented — By Priority
 
-- [x] EnSight — EnSight Gold format (ASCII reader + writer, case/geo/scalar/vector files)
-- [ ] Exodus — Exodus II (HDF5-based FEM format)
-- [ ] CGNS — CFD General Notation System
-- [ ] NetCDF — Network Common Data Format
-- [x] XDMF — eXtensible Data Model and Format (inline XML writer for PolyData + ImageData)
-- [x] LSDyna — LS-DYNA keyword reader (.k/.key/.dyn) for NODE + ELEMENT_SHELL/SOLID
-- [ ] Alembic — Alembic interchange format
-- [ ] OpenVDB — Sparse volumetric data
-- [ ] USD — Universal Scene Description
+#### High Priority (widely used scientific/engineering formats)
+- [ ] Exodus II `.exo` — HDF5-based FEM format (requires HDF5 C library)
+- [ ] CGNS `.cgns` — CFD General Notation System (requires CGNS/HDF5 C library)
+- [ ] NetCDF `.nc` — Network Common Data Format (requires NetCDF C library)
+- [x] GeoJSON `.geojson` — GeoJSON reader/writer (Point, LineString, Polygon)
+- [x] CSV/TSV `.csv/.tsv` — Flexible delimiter CSV reader/writer with quoted fields and point import
+- [x] OFF `.off` — Object File Format (ASCII reader + writer + COFF vertex colors)
+- [x] DXF `.dxf` — AutoCAD DXF reader/writer (3DFACE + LINE entities)
+
+#### Medium Priority (domain-specific formats)
+- [ ] Alembic `.abc` — Alembic interchange format (requires Alembic C++ library)
+- [ ] OpenVDB `.vdb` — Sparse volumetric data (requires OpenVDB C++ library)
+- [ ] USD `.usd/.usda/.usdc` — Universal Scene Description (requires USD C++ library)
+- [x] LAS `.las` — LAS 1.2 LIDAR point cloud reader/writer (formats 0-3, intensity + classification)
+- [x] SEG-Y `.sgy` — SEG-Y rev 1 reader (EBCDIC+binary header, trace data as ImageData or points)
+- [x] Tecplot `.dat` — Tecplot ASCII reader/writer (FEPOINT zones, extra variables as point data)
+- [x] FITS `.fits` — FITS reader/writer (2D/3D image, BITPIX -32/-64/16/32, BSCALE/BZERO)
+- [ ] AMR formats — BoxLib, Chombo, SAMRAI AMR data
+- [ ] CityGML `.gml` — 3D city model data
+- [x] BYU `.byu` — BYU Movie format reader/writer (1-based polygon connectivity)
+- [x] Facet `.facet` — Facet format reader/writer (vertex + triangle connectivity)
+
+#### Lower Priority (require heavy C/C++ dependencies)
+- [ ] GDAL — Geospatial raster/vector via GDAL C library
+- [ ] PDAL — Point cloud via PDAL C library
+- [ ] OCCT/STEP/IGES — CAD formats via OpenCASCADE C++ library
+- [ ] FFMPEG — Video I/O via FFMPEG C library
+- [ ] MySQL/PostgreSQL/ODBC — Database I/O
+- [ ] DICOM `.dcm` — Medical imaging (DCMTK C++ library)
+- [ ] MINC `.mnc` — Medical imaging (NetCDF-based)
+- [x] EnSight — EnSight Gold format (implemented)
+- [x] XDMF — eXtensible Data Model and Format (implemented)
+- [x] LSDyna — LS-DYNA keyword reader (implemented)
 
 ---
 
@@ -1128,15 +1289,47 @@ Last updated: 2026-03-27 | Tests: 2444 | Clippy: clean (PartialEq on all major d
 - [x] GPU clip planes — up to 6 clip planes per scene for section views, `ClipPlane::x()`/`y()`/`z()`
 - [x] Scene serialization — `save_scene_config()` / `load_scene_config()` for camera, lights, clip planes
 
+### Not Yet Implemented — Rendering
+
+#### High Priority
+- [ ] Clip plane rendering — render clipped geometry with capped cross-section faces
+- [ ] Multi-viewport rendering — render multiple views in split-screen layout (Viewport exists, not wired to GPU)
+- [x] Depth peeling — CPU depth peeling layers + depth-sorted mesh for painter's algorithm
+- [ ] Shadow rendering — shadow map pass wired into GPU pipeline (ShadowConfig exists, not wired)
+- [ ] Bloom post-process — bloom pass wired into GPU pipeline (BloomConfig exists, not wired)
+- [ ] Stereo rendering — stereo pass wired into GPU pipeline (StereoConfig exists, not wired)
+- [ ] Point sprites — GPU point rendering with configurable size/shape
+- [ ] Line width — GPU line width control
+
+#### Medium Priority
+- [ ] Ray tracing — hardware/software ray tracing for reflections and global illumination
+- [ ] Environment mapping — cube map / IBL environment lighting
+- [ ] Screen-space ambient occlusion (SSAO) — post-process ambient occlusion
+- [ ] Glyph instancing on GPU — instanced rendering of glyph meshes (currently CPU flatten)
+- [ ] Texture atlas — efficient multi-texture rendering
+- [ ] TrueType font rendering — FreeType or equivalent for crisp text at any size
+- [ ] Color bar improvements — gradient rendering, custom tick formatting
+- [ ] Axes cube widget — interactive axes cube (like ParaView)
+- [ ] 2D rendering context — 2D drawing API for charts, plots, annotations
+
+#### Lower Priority
+- [ ] VR/XR support — OpenXR-based head-mounted display rendering
+- [ ] Remote rendering — server-side rendering with image streaming
+- [ ] Parallel rendering — distributed rendering with compositing
+- [ ] Path tracing — Monte Carlo path tracing for photorealistic rendering
+- [ ] Subdivision surface rendering — GPU tessellation of subdivision surfaces
+- [ ] Impostor rendering — billboards for distant objects
+- [ ] Depth-of-field — post-process depth-of-field blur
+
 ---
 
 ## Infrastructure
 
 ### Implemented
 
-- [x] Workspace with 15 crates + `vtk` convenience crate (`use vtk::prelude::*`)
+- [x] Workspace with 25 crates + `vtk` convenience crate (`use vtk::prelude::*`)
 - [x] 10 examples (triangle, shapes, isosurface, scalar_colors, showcase, pipeline_demo, volume, mesh_info, headless_render, bench_filters)
-- [x] 2454 unit tests (incl. cross-format I/O roundtrip integration tests, 21 doctests, 10 proptests, Send+Sync assertions)
+- [x] 3284 unit tests (incl. cross-format I/O roundtrip integration tests, 21 doctests, 10 proptests, Send+Sync assertions)
 - [x] Clippy-clean (`-D warnings`)
 
 ### Not Yet Implemented
@@ -1148,3 +1341,24 @@ Last updated: 2026-03-27 | Tests: 2444 | Clippy: clean (PartialEq on all major d
 - [x] Benchmarks — `cargo run --release --example bench_filters` (sphere, normals, marching cubes, etc.)
 - [x] Documentation (rustdoc with examples) — doc examples on DataArray, PolyData, ImageData, Camera, ColorMap
 - [x] Property / fuzz testing — proptest for DataArray, CellArray, Points, PolyData roundtrips
+
+### Not Yet Implemented — Infrastructure
+
+#### High Priority
+- [x] Streaming / chunked processing — mmap_data utilities, chunked read/write, memory estimation
+- [x] Parallel pipeline — rayon-based parallel branches, map, merge, chunked processing
+- [ ] CI/CD — automated testing, linting, and benchmarking
+- [ ] Published documentation — hosted rustdoc with examples
+
+#### Medium Priority
+- [ ] MPI support — distributed memory parallelism via MPI bindings
+- [ ] GPU compute filters — wgpu compute shaders for data-parallel filters
+- [ ] Memory-mapped data — mmap large files for zero-copy I/O
+- [ ] Data streaming — progressive loading and rendering of large datasets
+- [ ] Plugin system — dynamic loading of filter/reader/writer plugins
+
+#### Lower Priority
+- [ ] In-situ visualization — co-processing with simulation codes
+- [ ] Web viewer — WASM-based interactive 3D viewer in browser
+- [ ] Jupyter integration — inline rendering in Jupyter notebooks via Python bindings
+- [ ] Language bindings — Java, C, JavaScript/TypeScript bindings

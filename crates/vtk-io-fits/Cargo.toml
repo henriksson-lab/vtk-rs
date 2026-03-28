@@ -1,0 +1,8 @@
+[package]
+name = "vtk-io-fits"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vtk-types = { workspace = true }
+vtk-data = { workspace = true }

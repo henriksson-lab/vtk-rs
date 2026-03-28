@@ -5,7 +5,7 @@ use vtk_types::VtkError;
 
 /// Read a PolyData from a file, auto-detecting the format by extension.
 ///
-/// Supported extensions: `.vtk`, `.vtp`, `.stl`, `.obj`, `.ply`, `.glb`
+/// Supported extensions: `.vtk`, `.vtp`, `.stl`, `.obj`, `.ply`, `.glb`, `.off`
 pub fn read_poly_data(path: &Path) -> Result<PolyData, VtkError> {
     let ext = path.extension()
         .and_then(|e| e.to_str())
@@ -19,13 +19,14 @@ pub fn read_poly_data(path: &Path) -> Result<PolyData, VtkError> {
         "obj" => vtk_io_obj::ObjReader::read(path),
         "ply" => vtk_io_ply::PlyReader::read(path),
         "glb" => vtk_io_gltf::GlbReader::read(path),
+        "off" => vtk_io_off::read_off_file(path).map_err(|e| VtkError::Parse(e)),
         _ => Err(VtkError::Unsupported(format!("unknown file extension: .{ext}"))),
     }
 }
 
 /// Write a PolyData to a file, auto-detecting the format by extension.
 ///
-/// Supported extensions: `.vtk`, `.vtp`, `.stl`, `.obj`, `.ply`, `.glb`
+/// Supported extensions: `.vtk`, `.vtp`, `.stl`, `.obj`, `.ply`, `.glb`, `.off`
 pub fn write_poly_data(path: &Path, data: &PolyData) -> Result<(), VtkError> {
     let ext = path.extension()
         .and_then(|e| e.to_str())
@@ -39,18 +40,19 @@ pub fn write_poly_data(path: &Path, data: &PolyData) -> Result<(), VtkError> {
         "obj" => vtk_io_obj::ObjWriter::write(path, data),
         "ply" => vtk_io_ply::PlyWriter::write(path, data),
         "glb" => vtk_io_gltf::GlbWriter::write(path, data),
+        "off" => vtk_io_off::write_off_file(data, path).map_err(|e| VtkError::Io(std::io::Error::new(std::io::ErrorKind::Other, e))),
         _ => Err(VtkError::Unsupported(format!("unknown file extension: .{ext}"))),
     }
 }
 
 /// List of supported file extensions for reading.
 pub fn supported_read_extensions() -> &'static [&'static str] {
-    &["vtk", "vtp", "stl", "obj", "ply", "glb"]
+    &["vtk", "vtp", "stl", "obj", "ply", "glb", "off"]
 }
 
 /// List of supported file extensions for writing.
 pub fn supported_write_extensions() -> &'static [&'static str] {
-    &["vtk", "vtp", "stl", "obj", "ply", "glb"]
+    &["vtk", "vtp", "stl", "obj", "ply", "glb", "off"]
 }
 
 #[cfg(test)]

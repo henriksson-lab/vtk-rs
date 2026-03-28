@@ -13,6 +13,16 @@ members = [
     "crates/vtk-io-gltf",
     "crates/vtk-io-ensight",
     "crates/vtk-io-xdmf",
+    "crates/vtk-io-off",
+    "crates/vtk-io-dxf",
+    "crates/vtk-io-geojson",
+    "crates/vtk-io-csv",
+    "crates/vtk-io-byu",
+    "crates/vtk-io-las",
+    "crates/vtk-io-facet",
+    "crates/vtk-io-segy",
+    "crates/vtk-io-tecplot",
+    "crates/vtk-io-fits",
     "crates/vtk-python",
     "crates/vtk",
 ]
@@ -32,6 +42,16 @@ vtk-io-ply = { path = "crates/vtk-io-ply" }
 vtk-io-gltf = { path = "crates/vtk-io-gltf" }
 vtk-io-ensight = { path = "crates/vtk-io-ensight" }
 vtk-io-xdmf = { path = "crates/vtk-io-xdmf" }
+vtk-io-off = { path = "crates/vtk-io-off" }
+vtk-io-dxf = { path = "crates/vtk-io-dxf" }
+vtk-io-geojson = { path = "crates/vtk-io-geojson" }
+vtk-io-csv = { path = "crates/vtk-io-csv" }
+vtk-io-byu = { path = "crates/vtk-io-byu" }
+vtk-io-las = { path = "crates/vtk-io-las" }
+vtk-io-facet = { path = "crates/vtk-io-facet" }
+vtk-io-segy = { path = "crates/vtk-io-segy" }
+vtk-io-tecplot = { path = "crates/vtk-io-tecplot" }
+vtk-io-fits = { path = "crates/vtk-io-fits" }
 pyo3 = { version = "0.23", features = ["extension-module"] }
 rayon = "1.10"
 proptest = "1"
