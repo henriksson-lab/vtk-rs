@@ -5,8 +5,8 @@ use vtk_data::{AnyDataArray, DataArray, ImageData};
 /// DoG = Gaussian(sigma1) - Gaussian(sigma2), approximates Laplacian of Gaussian.
 /// Useful for blob detection (positive = bright blob, negative = dark blob).
 pub fn image_dog(input: &ImageData, scalars: &str, sigma1: f64, sigma2: f64, radius: usize) -> ImageData {
-    let g1=crate::image_gaussian_smooth::image_gaussian_smooth(input,scalars,sigma1,radius);
-    let g2=crate::image_gaussian_smooth::image_gaussian_smooth(input,scalars,sigma2,radius);
+    let g1=crate::image::gaussian_smooth::image_gaussian_smooth(input,scalars,sigma1,radius);
+    let g2=crate::image::gaussian_smooth::image_gaussian_smooth(input,scalars,sigma2,radius);
 
     let a1=match g1.point_data().get_array(scalars){Some(a)=>a,None=>return input.clone()};
     let a2=match g2.point_data().get_array(scalars){Some(a)=>a,None=>return input.clone()};

@@ -38,14 +38,14 @@ pub fn image_morphological_gradient(input: &ImageData, scalars: &str, radius: us
 
 /// Morphological opening: erosion followed by dilation. Removes small bright features.
 pub fn image_morphological_opening(input: &ImageData, scalars: &str, radius: usize) -> ImageData {
-    let eroded = crate::image_dilate_erode::image_erode(input, scalars, radius);
-    crate::image_dilate_erode::image_dilate(&eroded, scalars, radius)
+    let eroded = crate::image::dilate_erode::image_erode(input, scalars, radius);
+    crate::image::dilate_erode::image_dilate(&eroded, scalars, radius)
 }
 
 /// Morphological closing: dilation followed by erosion. Fills small dark holes.
 pub fn image_morphological_closing(input: &ImageData, scalars: &str, radius: usize) -> ImageData {
-    let dilated = crate::image_dilate_erode::image_dilate(input, scalars, radius);
-    crate::image_dilate_erode::image_erode(&dilated, scalars, radius)
+    let dilated = crate::image::dilate_erode::image_dilate(input, scalars, radius);
+    crate::image::dilate_erode::image_erode(&dilated, scalars, radius)
 }
 
 #[cfg(test)]

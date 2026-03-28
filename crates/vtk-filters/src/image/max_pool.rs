@@ -15,7 +15,7 @@ pub fn image_min_pool(input: &ImageData, scalars: &str, pool_size: usize) -> Ima
 /// Average pooling: take the mean of each block.
 pub fn image_avg_pool(input: &ImageData, scalars: &str, pool_size: usize) -> ImageData {
     // Average pooling is handled by image_downsample, but provide here for API consistency
-    crate::image_downsample::image_downsample(input, scalars, pool_size)
+    crate::image::downsample::image_downsample(input, scalars, pool_size)
 }
 
 fn pool_op<F: Fn(f64,f64)->f64>(input: &ImageData, scalars: &str, pool_size: usize, op: F) -> ImageData {

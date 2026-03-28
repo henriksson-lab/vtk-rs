@@ -10,7 +10,7 @@ pub fn image_pyramid(input: &ImageData, scalars: &str, levels: usize) -> Vec<Ima
 
     for _ in 0..levels {
         let prev = pyramid.last().unwrap();
-        let down = crate::image_downsample::image_downsample(prev, scalars, 2);
+        let down = crate::image::downsample::image_downsample(prev, scalars, 2);
         if down.dimensions()[0] < 2 || down.dimensions()[1] < 2 { break; }
         pyramid.push(down);
     }

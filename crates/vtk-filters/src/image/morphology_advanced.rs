@@ -4,13 +4,13 @@ use vtk_data::{AnyDataArray, DataArray, ImageData};
 
 /// White top-hat: original - opening (highlights bright features smaller than SE).
 pub fn white_top_hat(image: &ImageData, array_name: &str, radius: usize) -> ImageData {
-    let opened = crate::image_morphology_3d::open_3d(image, array_name, radius);
+    let opened = crate::image::morphology_3d::open_3d(image, array_name, radius);
     subtract_images(image, &opened, array_name)
 }
 
 /// Black top-hat: closing - original (highlights dark features smaller than SE).
 pub fn black_top_hat(image: &ImageData, array_name: &str, radius: usize) -> ImageData {
-    let closed = crate::image_morphology_3d::close_3d(image, array_name, radius);
+    let closed = crate::image::morphology_3d::close_3d(image, array_name, radius);
     subtract_images(&closed, image, array_name)
 }
 

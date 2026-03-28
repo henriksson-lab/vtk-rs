@@ -28,7 +28,7 @@ pub fn image_clip_percentile(input: &ImageData, scalars: &str, lo_pct: f64, hi_p
         Some(v) => v, None => return input.clone(),
     };
 
-    crate::image_abs::image_clamp(input, scalars, lo_val, hi_val)
+    crate::image::abs::image_clamp(input, scalars, lo_val, hi_val)
 }
 
 #[cfg(test)]

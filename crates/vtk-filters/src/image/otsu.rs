@@ -70,7 +70,7 @@ pub fn image_otsu(input: &ImageData, scalars: &str, n_bins: usize) -> ImageData 
         None => return input.clone(),
     };
 
-    crate::image_threshold::image_binary_threshold(input, scalars, threshold, f64::MAX)
+    crate::image::threshold::image_binary_threshold(input, scalars, threshold, f64::MAX)
 }
 
 #[cfg(test)]

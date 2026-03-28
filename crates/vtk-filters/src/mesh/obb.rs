@@ -1,6 +1,6 @@
 use vtk_data::PolyData;
 
-use crate::mesh_pca_axes::{compute_pca, PcaResult};
+use crate::mesh::pca_axes::{compute_pca, PcaResult};
 
 /// Result of oriented bounding box computation.
 #[derive(Debug, Clone)]
