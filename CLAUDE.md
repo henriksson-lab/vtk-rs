@@ -27,7 +27,7 @@ cargo run --release --example bench_filters  # performance benchmarks
 crates/
   vtk-types/       # Scalar trait, ScalarType, CellType (46 types), VtkError, BoundingBox, ImplicitFunction, higher_order
   vtk-data/        # DataArray, CellArray, Points, FieldData, DataSetAttributes, PolyData, ImageData, UnstructuredGrid, RectilinearGrid, StructuredGrid, MultiBlockDataSet, Table, KdTree, OctreePointLocator, CellLocator, Selection, Graph, Tree, ExplicitStructuredGrid, HyperTreeGrid, Molecule
-  vtk-filters/     # 777 filters + 62 sources + pipeline + convert + topology + merge + selection_extract + io_utils
+  vtk-filters/     # 786 filters + 62 sources + pipeline + convert + topology + merge + selection_extract + io_utils
   vtk-io-legacy/   # VTK legacy format (.vtk) ASCII/binary reader and writer
   vtk-io-stl/      # STL format ASCII/binary reader and writer
   vtk-io-obj/      # Wavefront OBJ format reader and writer

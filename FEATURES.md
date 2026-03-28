@@ -2,7 +2,7 @@
 
 Feature tracking for vtk-rs — a pure Rust reimplementation of VTK.
 
-Last updated: 2026-03-27 | ~132K lines Rust | Tests: 3284 | Clippy: clean | Coverage: ~10% of VTK C++ (1M lines)
+Last updated: 2026-03-27 | ~132K lines Rust | Tests: 3311 | Clippy: clean | Coverage: ~10% of VTK C++ (1M lines)
 
 ---
 
@@ -118,7 +118,7 @@ Last updated: 2026-03-27 | ~132K lines Rust | Tests: 3284 | Clippy: clean | Cove
 
 ---
 
-## Processing Filters (777 / ~300+ in VTK)
+## Processing Filters (786 / ~300+ in VTK)
 
 ### Implemented
 
@@ -1329,7 +1329,7 @@ Last updated: 2026-03-27 | ~132K lines Rust | Tests: 3284 | Clippy: clean | Cove
 
 - [x] Workspace with 25 crates + `vtk` convenience crate (`use vtk::prelude::*`)
 - [x] 10 examples (triangle, shapes, isosurface, scalar_colors, showcase, pipeline_demo, volume, mesh_info, headless_render, bench_filters)
-- [x] 3284 unit tests (incl. cross-format I/O roundtrip integration tests, 21 doctests, 10 proptests, Send+Sync assertions)
+- [x] 3311 unit tests (incl. cross-format I/O roundtrip integration tests, 21 doctests, 10 proptests, Send+Sync assertions)
 - [x] Clippy-clean (`-D warnings`)
 
 ### Not Yet Implemented
