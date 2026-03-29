@@ -174,7 +174,7 @@ fn main() {
     let mut scene = Scene::new();
 
     // PBR metallic sphere
-    let sphere = sources::sphere(&sources::sphere::SphereParams {
+    let sphere = sources::sphere::sphere(&sources::sphere::SphereParams {
         center: [-3.0, 0.0, 0.0],
         radius: 0.8,
         theta_resolution: 32,
@@ -186,7 +186,7 @@ fn main() {
     scene.add_actor(sphere_actor);
 
     // PBR rough dielectric cube
-    let cube = sources::cube(&sources::cube::CubeParams {
+    let cube = sources::cube::cube(&sources::cube::CubeParams {
         center: [-1.0, 0.0, 0.0],
         ..Default::default()
     });
@@ -195,7 +195,7 @@ fn main() {
     scene.add_actor(cube_actor);
 
     // Translucent cone
-    let cone = sources::cone(&sources::cone::ConeParams {
+    let cone = sources::cone::cone(&sources::cone::ConeParams {
         center: [1.0, 0.0, 0.0],
         ..Default::default()
     });
@@ -204,7 +204,7 @@ fn main() {
     scene.add_actor(cone_actor);
 
     // Wireframe + edges cylinder
-    let cyl = sources::cylinder(&sources::cylinder::CylinderParams {
+    let cyl = sources::cylinder::cylinder(&sources::cylinder::CylinderParams {
         center: [3.0, 0.0, 0.0],
         ..Default::default()
     });
@@ -213,7 +213,7 @@ fn main() {
     scene.add_actor(cyl_actor);
 
     // Elevation-colored sphere with scalar bar
-    let elev_sphere = sources::sphere(&sources::sphere::SphereParams {
+    let elev_sphere = sources::sphere::sphere(&sources::sphere::SphereParams {
         center: [5.0, 0.0, 0.0],
         radius: 0.8,
         theta_resolution: 32,

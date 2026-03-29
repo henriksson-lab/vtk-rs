@@ -96,7 +96,7 @@ fn main() {
     let mut scene = Scene::new();
 
     // Sphere colored by elevation (jet colormap)
-    let sphere = sources::sphere(&sources::sphere::SphereParams {
+    let sphere = sources::sphere::sphere(&sources::sphere::SphereParams {
         center: [-1.5, 0.0, 0.0],
         radius: 1.0,
         theta_resolution: 32,
@@ -109,7 +109,7 @@ fn main() {
     );
 
     // Cone colored by elevation (viridis)
-    let cone = sources::cone(&sources::cone::ConeParams {
+    let cone = sources::cone::cone(&sources::cone::ConeParams {
         center: [1.5, 0.0, 0.0],
         height: 2.0,
         radius: 0.8,
@@ -122,7 +122,7 @@ fn main() {
     );
 
     // Plane colored by elevation (cool to warm)
-    let plane = sources::plane(&sources::plane::PlaneParams {
+    let plane = sources::plane::plane(&sources::plane::PlaneParams {
         origin: [-1.5, -2.0, -1.5],
         point1: [1.5, -2.0, -1.5],
         point2: [-1.5, -2.0, 1.5],

@@ -98,7 +98,7 @@ fn main() {
     let mut scene = Scene::new();
 
     // Sphere
-    let sphere = sources::sphere(&sources::sphere::SphereParams {
+    let sphere = sources::sphere::sphere(&sources::sphere::SphereParams {
         center: [-2.0, 0.0, 0.0],
         radius: 0.8,
         ..Default::default()
@@ -106,28 +106,28 @@ fn main() {
     scene.add_actor(Actor::new(sphere).with_color(0.9, 0.2, 0.2));
 
     // Cube
-    let cube = sources::cube(&sources::cube::CubeParams {
+    let cube = sources::cube::cube(&sources::cube::CubeParams {
         center: [0.0, 0.0, 0.0],
         ..Default::default()
     });
     scene.add_actor(Actor::new(cube).with_color(0.2, 0.8, 0.2));
 
     // Cone
-    let cone = sources::cone(&sources::cone::ConeParams {
+    let cone = sources::cone::cone(&sources::cone::ConeParams {
         center: [2.0, 0.0, 0.0],
         ..Default::default()
     });
     scene.add_actor(Actor::new(cone).with_color(0.2, 0.4, 0.9));
 
     // Cylinder
-    let cyl = sources::cylinder(&sources::cylinder::CylinderParams {
+    let cyl = sources::cylinder::cylinder(&sources::cylinder::CylinderParams {
         center: [4.0, 0.0, 0.0],
         ..Default::default()
     });
     scene.add_actor(Actor::new(cyl).with_color(0.9, 0.7, 0.1));
 
     // Arrow
-    let arrow = sources::arrow(&sources::arrow::ArrowParams::default());
+    let arrow = sources::arrow::arrow(&sources::arrow::ArrowParams::default());
     scene.add_actor(Actor::new(arrow).with_color(0.8, 0.3, 0.8));
 
     // Camera

@@ -23,6 +23,26 @@ members = [
     "crates/vtk-io-segy",
     "crates/vtk-io-tecplot",
     "crates/vtk-io-fits",
+    "crates/vtk-filters-image",
+    "crates/vtk-filters-mesh",
+    "crates/vtk-filters-extract",
+    "crates/vtk-filters-transform",
+    "crates/vtk-filters-subdivide",
+    "crates/vtk-filters-clip",
+    "crates/vtk-filters-smooth",
+    "crates/vtk-filters-cell",
+    "crates/vtk-filters-points",
+    "crates/vtk-filters-statistics",
+    "crates/vtk-filters-texture",
+    "crates/vtk-filters-flow",
+    "crates/vtk-filters-boolean",
+    "crates/vtk-filters-grid",
+    "crates/vtk-filters-data",
+    "crates/vtk-filters-distance",
+    "crates/vtk-filters-normals",
+    "crates/vtk-filters-geometry",
+    "crates/vtk-filters-image-2",
+    "crates/vtk-filters-mesh-2",
     "crates/vtk-python",
     "crates/vtk",
 ]
@@ -32,6 +52,24 @@ resolver = "2"
 vtk-types = { path = "crates/vtk-types" }
 vtk-data = { path = "crates/vtk-data" }
 vtk-filters = { path = "crates/vtk-filters" }
+vtk-filters-image = { path = "crates/vtk-filters-image" }
+vtk-filters-mesh = { path = "crates/vtk-filters-mesh" }
+vtk-filters-extract = { path = "crates/vtk-filters-extract" }
+vtk-filters-transform = { path = "crates/vtk-filters-transform" }
+vtk-filters-subdivide = { path = "crates/vtk-filters-subdivide" }
+vtk-filters-clip = { path = "crates/vtk-filters-clip" }
+vtk-filters-smooth = { path = "crates/vtk-filters-smooth" }
+vtk-filters-cell = { path = "crates/vtk-filters-cell" }
+vtk-filters-points = { path = "crates/vtk-filters-points" }
+vtk-filters-statistics = { path = "crates/vtk-filters-statistics" }
+vtk-filters-texture = { path = "crates/vtk-filters-texture" }
+vtk-filters-flow = { path = "crates/vtk-filters-flow" }
+vtk-filters-boolean = { path = "crates/vtk-filters-boolean" }
+vtk-filters-grid = { path = "crates/vtk-filters-grid" }
+vtk-filters-data = { path = "crates/vtk-filters-data" }
+vtk-filters-distance = { path = "crates/vtk-filters-distance" }
+vtk-filters-normals = { path = "crates/vtk-filters-normals" }
+vtk-filters-geometry = { path = "crates/vtk-filters-geometry" }
 vtk-render = { path = "crates/vtk-render" }
 vtk-io-legacy = { path = "crates/vtk-io-legacy" }
 vtk-io-stl = { path = "crates/vtk-io-stl" }

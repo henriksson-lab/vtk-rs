@@ -1,0 +1,12 @@
+//! flow filters.
+
+pub mod even_spaced_streamlines;
+pub mod interpolated_velocity_field;
+pub mod lagrangian_particle_tracker;
+pub mod particle_path_filter;
+pub mod particle_tracer;
+pub mod streak_line;
+pub mod stream_tracer;
+pub mod temporal_interpolator;
+pub mod temporal_stream_tracer;
+pub mod vector_field_topology;

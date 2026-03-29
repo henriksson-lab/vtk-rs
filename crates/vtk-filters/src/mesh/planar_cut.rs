@@ -8,8 +8,9 @@ use vtk_data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
 /// Cut a mesh by a plane and generate a cap polygon at the cut.
 ///
 /// Returns (clipped_mesh, cap_polygon).
+/// Note: uses a simple vertex-rejection clip (keeps vertices on the positive side of the plane).
 pub fn cut_with_cap(mesh: &PolyData, origin: [f64; 3], normal: [f64; 3]) -> (PolyData, PolyData) {
-    let clipped = crate::clip::clip_by_plane(mesh, origin, normal);
+    let clipped = simple_clip_by_plane(mesh, origin, normal);
 
     // Find boundary edges of the clipped mesh that lie on the cut plane
     let boundary = find_boundary_on_plane(&clipped, origin, normal, 0.01);
@@ -111,6 +112,34 @@ fn build_cap_polygon(pts: &[[f64; 3]], _normal: [f64; 3]) -> PolyData {
 
 fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]
+}
+
+/// Simple plane clip: keeps cells whose centroid is on the positive side.
+fn simple_clip_by_plane(mesh: &PolyData, origin: [f64; 3], normal: [f64; 3]) -> PolyData {
+    let nlen = (normal[0].powi(2)+normal[1].powi(2)+normal[2].powi(2)).sqrt();
+    if nlen < 1e-15 { return mesh.clone(); }
+    let n = [normal[0]/nlen, normal[1]/nlen, normal[2]/nlen];
+    let mut used = vec![false; mesh.points.len()];
+    let mut kept = Vec::new();
+    for cell in mesh.polys.iter() {
+        if cell.is_empty() { continue; }
+        let mut cx = 0.0; let mut cy = 0.0; let mut cz = 0.0;
+        for &v in cell { let p = mesh.points.get(v as usize); cx+=p[0]; cy+=p[1]; cz+=p[2]; }
+        let nv = cell.len() as f64;
+        let d = (cx/nv-origin[0])*n[0]+(cy/nv-origin[1])*n[1]+(cz/nv-origin[2])*n[2];
+        if d >= 0.0 { for &v in cell { used[v as usize] = true; } kept.push(cell.to_vec()); }
+    }
+    let mut pt_map = vec![0usize; mesh.points.len()];
+    let mut pts = Points::<f64>::new();
+    for i in 0..mesh.points.len() {
+        if used[i] { pt_map[i] = pts.len(); pts.push(mesh.points.get(i)); }
+    }
+    let mut polys = CellArray::new();
+    for cell in &kept {
+        let mapped: Vec<i64> = cell.iter().map(|&v| pt_map[v as usize] as i64).collect();
+        polys.push_cell(&mapped);
+    }
+    let mut r = PolyData::new(); r.points = pts; r.polys = polys; r
 }
 
 #[cfg(test)]

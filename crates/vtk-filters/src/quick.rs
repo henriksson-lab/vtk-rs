@@ -76,7 +76,7 @@ pub fn isosurface_from_implicit(
     ];
     let origin = [bounds.x_min, bounds.y_min, bounds.z_min];
 
-    let img = crate::sample_implicit::sample_implicit_function(
+    let img = vtk_filters_points::sample_implicit::sample_implicit_function(
         dims, spacing, origin, "implicit", func,
     );
 

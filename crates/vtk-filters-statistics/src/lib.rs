@@ -1,0 +1,13 @@
+//! statistics filters.
+
+pub mod auto_correlative_statistics;
+pub mod compute_quartiles;
+pub mod contingency_statistics;
+pub mod correlative_statistics;
+pub mod descriptive_statistics;
+pub mod high_dimensional_histogram;
+pub mod histogram;
+pub mod kmeans_statistics;
+pub mod multi_correlative_statistics;
+pub mod order_statistics;
+pub mod principal_component_analysis;

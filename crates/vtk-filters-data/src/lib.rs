@@ -1,0 +1,25 @@
+//! data filters.
+
+pub mod aggregate;
+pub mod array_compute;
+pub mod array_math;
+pub mod array_rename;
+pub mod attribute_convert;
+pub mod compute_area;
+pub mod data_array_math;
+pub mod data_array_operations;
+pub mod deep_copy;
+pub mod field_data_to_attribute;
+pub mod generate_ids;
+pub mod integrate_attributes;
+pub mod pass_arrays;
+pub mod poly_data_to_image_data;
+pub mod poly_data_to_table;
+pub mod radii_to_scalars;
+pub mod random_attributes;
+pub mod resample;
+pub mod resample_to_image;
+pub mod scalar_range;
+pub mod split_by_array;
+pub mod table_operations;
+pub mod table_to_poly_data;
