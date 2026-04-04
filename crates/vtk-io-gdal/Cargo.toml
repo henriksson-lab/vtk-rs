@@ -1,0 +1,14 @@
+[package]
+name = "vtk-io-gdal"
+version = "0.1.0"
+edition = "2021"
+description = "GDAL-based geospatial raster/vector I/O for vtk-rs"
+
+[features]
+default = []
+gdal = ["dep:gdal"]
+
+[dependencies]
+vtk-types = { path = "../vtk-types" }
+vtk-data = { path = "../vtk-data" }
+gdal = { version = "0.17", optional = true }
