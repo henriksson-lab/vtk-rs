@@ -1,0 +1,9 @@
+[package]
+name = "vtk-io-dicom"
+version = "0.1.0"
+edition = "2021"
+description = "Basic DICOM image reader for vtk-rs (no external dependencies)"
+
+[dependencies]
+vtk-types = { path = "../vtk-types" }
+vtk-data = { path = "../vtk-data" }

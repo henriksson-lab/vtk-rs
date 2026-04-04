@@ -66,6 +66,7 @@ pub mod aggregate_dataset;
 pub mod marching_cubes;
 pub mod slice;
 pub mod piece_request;
+pub mod plugin;
 
 // Re-export commonly used modules from sub-crates for backward compatibility
 pub use vtk_filters_normals::normals;

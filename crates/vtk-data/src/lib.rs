@@ -68,6 +68,9 @@ pub mod partitioned;
 pub mod reeb_graph;
 pub mod amr_dataset;
 pub mod generic_dataset;
+pub mod cell_grid;
+pub mod mmap_array;
+pub mod streaming;
 
 pub use data_array::{DataArray, AnyDataArray, ArrayStatistics, DataArrayTupleIter};
 pub use cell_array::CellArray;

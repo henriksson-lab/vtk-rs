@@ -3,7 +3,12 @@ name = "vtk-render"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+truetype = ["fontdue"]
+
 [dependencies]
 vtk-types = { workspace = true }
 vtk-data = { workspace = true }
 glam = { workspace = true }
+fontdue = { version = "0.9", optional = true }

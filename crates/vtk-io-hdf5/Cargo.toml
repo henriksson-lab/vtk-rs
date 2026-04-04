@@ -1,0 +1,21 @@
+[package]
+name = "vtk-io-hdf5"
+version = "0.1.0"
+edition = "2021"
+description = "HDF5-based I/O formats for vtk-rs: Exodus II, CGNS, AMR, NetCDF, MINC"
+
+[features]
+default = []
+hdf5 = ["dep:hdf5"]
+exodus = ["hdf5"]
+cgns = ["hdf5"]
+amr = ["hdf5"]
+netcdf = ["dep:netcdf-rs"]
+minc = ["netcdf"]
+all = ["exodus", "cgns", "amr", "netcdf", "minc"]
+
+[dependencies]
+vtk-types = { path = "../vtk-types" }
+vtk-data = { path = "../vtk-data" }
+hdf5 = { version = "0.8", optional = true }
+netcdf-rs = { package = "netcdf", version = "0.9", optional = true }

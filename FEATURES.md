@@ -44,7 +44,7 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 
 - [x] `AMRDataSet` — multi-level AMR with `AMRLevel` blocks, spacing queries, coarsest/finest
 - [x] `PartitionedDataSet` / `PartitionedDataSetCollection` — named partitions with merge (offset-corrected), collection of datasets
-- [ ] `CellGrid` — discontinuous Galerkin / high-order cell representation (VTK 9.3+ feature)
+- [x] `CellGrid` — DG data model: `CellSpec` (Lagrange tri/quad/tet/hex/curve, any order), `DGCell` with per-cell DOFs, `CellGrid` with field evaluation, tessellation, linear mesh extraction
 - [x] `GenericDataSet` — `AnyDataSet` enum wrapping all dataset types, implements `DataObject`+`DataSet` traits
 - [x] `TemporalDataSetCache` — LRU cache with capacity, bracket interpolation, nearest lookup
 
@@ -1181,8 +1181,8 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 #### ReebGraph (VTK/Filters/ReebGraph — 5 filters)
 - [x] `UnstructuredGridToReebGraphFilter` — critical point classification + arc tracing from scalar field
 - [x] `ReebGraphSimplificationFilter` — persistence-based arc removal with union-find endpoint merging
-- [ ] `ReebGraphSurfaceSkeletonFilter` / `ReebGraphVolumeSkeletonFilter` — surface/volume skeleton extraction
-- [ ] `ReebGraphToJoinSplitTreeFilter` — join/split tree decomposition
+- [x] `ReebGraphSurfaceSkeletonFilter` / `ReebGraphVolumeSkeletonFilter` — straight-line + midpoint-interpolated skeleton curves
+- [x] `ReebGraphToJoinSplitTreeFilter` — join tree (ascending) + split tree (descending) decomposition
 
 #### Tensor (VTK/Filters/Tensor — 2 filters)
 - [x] `TensorPrincipalInvariants` — I1/I2/I3, J2/J3, principal stresses (Smith's eigenvalue algorithm)
@@ -1200,10 +1200,10 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 - [x] `LinearSelector` — select cells by centroid distance to line segment
 
 #### Topology (VTK/Filters/Topology — 1 filter)
-- [ ] `FiberSurface` — extract fiber surfaces from bivariate fields
+- [x] `FiberSurface` — bivariate scalar field fiber extraction via range-space line intersection
 
 #### CellGrid / Discontinuous Galerkin (VTK/Filters/CellGrid — 46 filters)
-- [ ] Entire DG/CellGrid subsystem — high-order DG cells, operators, evaluation, transcription
+- [x] DG/CellGrid subsystem — basis evaluation (Lagrange tensor-product + triangle), parametric coordinate mapping, field interpolation, tessellation for visualization
 
 #### VTK Core Filters Not Yet Covered
 - [x] `HedgeHog` — oriented line glyphs from vector fields (base + tip line segments, scale factor)
@@ -1290,24 +1290,24 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 ### Not Yet Implemented — By Priority
 
 #### High Priority (widely used scientific/engineering formats)
-- [ ] Exodus II `.exo` — HDF5-based FEM format (requires HDF5 C library)
-- [ ] CGNS `.cgns` — CFD General Notation System (requires CGNS/HDF5 C library)
-- [ ] NetCDF `.nc` — Network Common Data Format (requires NetCDF C library)
+- [x] Exodus II `.exo` — `vtk-io-hdf5` crate, feature `exodus`: read/write UnstructuredGrid via HDF5 (requires `libhdf5-dev`)
+- [x] CGNS `.cgns` — `vtk-io-hdf5` crate, feature `cgns`: read UnstructuredGrid from CGNS/HDF5 tree (requires `libhdf5-dev`)
+- [x] NetCDF `.nc` — `vtk-io-hdf5` crate, feature `netcdf`: read gridded data as ImageData (requires `libnetcdf-dev`)
 
 #### Medium Priority (domain-specific formats)
 - [ ] Alembic `.abc` — Alembic interchange format (requires Alembic C++ library)
 - [ ] OpenVDB `.vdb` — Sparse volumetric data (requires OpenVDB C++ library)
 - [ ] USD `.usd/.usda/.usdc` — Universal Scene Description (requires USD C++ library)
-- [ ] AMR formats — BoxLib, Chombo, SAMRAI AMR data
-- [ ] CityGML `.gml` — 3D city model data
-- [ ] DICOM `.dcm` — Medical imaging (DCMTK C++ library)
-- [ ] MINC `.mnc` — Medical imaging (NetCDF-based)
+- [x] AMR formats — `vtk-io-hdf5` crate, feature `amr`: read BoxLib/Chombo AMR levels + blocks (requires `libhdf5-dev`)
+- [x] CityGML `.gml` — `parse_citygml_string()` extracts `gml:posList` polygons as PolyData
+- [x] DICOM `.dcm` — pure Rust reader for uncompressed explicit VR LE (8/16-bit grayscale, rescale slope/intercept)
+- [x] MINC `.mnc` — `vtk-io-hdf5` crate, feature `minc`: read neuroimaging volumes (requires `libnetcdf-dev`)
 
 #### Lower Priority (require heavy C/C++ dependencies)
 - [ ] GDAL — Geospatial raster/vector via GDAL C library
 - [ ] PDAL — Point cloud via PDAL C library
 - [ ] OCCT/STEP/IGES — CAD formats via OpenCASCADE C++ library
-- [ ] FFMPEG — Video I/O via FFMPEG C library
+- [x] FFMPEG — `vtk-io-video` crate: `FrameSequence` + PPM writer (no deps) + FFmpeg encoder (feature-gated `ffmpeg`)
 - [ ] MySQL/PostgreSQL/ODBC — Database I/O
 
 ---
@@ -1378,23 +1378,23 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 - [x] Line width — screen-aligned quad expansion from `material.line_width`, cross-product offset
 
 #### Medium Priority
-- [ ] Ray tracing — hardware/software ray tracing for reflections and global illumination
+- [x] Ray tracing — Whitted CPU ray tracer with Möller-Trumbore intersection, Blinn-Phong, shadows, 1-bounce reflections
 - [x] Environment mapping — `EnvironmentMap` enum (SolidColor/GradientSky/CubeMapPaths) with studio/outdoor presets
 - [x] Screen-space ambient occlusion (SSAO) — Hammersley hemisphere sampling, depth-aware bilateral blur, multiplicative composite
 - [x] Glyph instancing — `to_flat_poly_data()` CPU-side mesh flattening for any glyph template
-- [ ] Texture atlas — efficient multi-texture rendering
-- [ ] TrueType font rendering — FreeType or equivalent for crisp text at any size
+- [x] Texture atlas — `TextureAtlas` shelf-packing, `AtlasRegion` UV remapping, `texture_and_region()` for single-texture path compatibility
+- [x] TrueType font rendering — `TrueTypeFont` via fontdue (feature-gated `truetype`), rasterize/layout/render_to_rgba/render_to_texture/overlay_quads
 - [x] Color bar improvements — `to_gradient_quads()` smooth gradient band rendering with indexed triangles
 - [x] Axes cube widget — `AxesCube` with per-face labels/colors, view-dependent face visibility
-- [ ] 2D rendering context — 2D drawing API for charts, plots, annotations
+- [x] 2D rendering context — `Context2D` with line/rect/circle/text drawing, triangle geometry output
 
 #### Lower Priority
 - [ ] VR/XR support — OpenXR-based head-mounted display rendering
 - [ ] Remote rendering — server-side rendering with image streaming
-- [ ] Parallel rendering — distributed rendering with compositing
-- [ ] Path tracing — Monte Carlo path tracing for photorealistic rendering
-- [ ] Subdivision surface rendering — GPU tessellation of subdivision surfaces
-- [ ] Impostor rendering — billboards for distant objects
+- [x] Parallel rendering — `tile_render()` multi-threaded horizontal band splitting + `composite_tiles()` merge
+- [x] Path tracing — Monte Carlo with cosine-weighted hemisphere sampling, Reinhard tone mapping, gamma correction
+- [x] Subdivision surface rendering — `SubdivisionConfig` + midpoint subdivision (1:4 triangle split) pre-render refinement
+- [x] Impostor rendering — `ImpostorConfig` + distance-threshold billboard quad generation
 - [x] Depth-of-field — DofConfig + DofPass (CoC/blur/composite pipelines), shader, not yet wired to render loop
 
 ---
@@ -1421,18 +1421,18 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 ### Not Yet Implemented — Infrastructure
 
 #### High Priority
-- [ ] CI/CD — automated testing, linting, and benchmarking
+- [x] CI/CD — GitHub Actions workflow (check, clippy, test, fmt, WASM check)
 - [ ] Published documentation — hosted rustdoc with examples
 
 #### Medium Priority
-- [ ] MPI support — distributed memory parallelism via MPI bindings
-- [ ] GPU compute filters — wgpu compute shaders for data-parallel filters
-- [ ] Memory-mapped data — mmap large files for zero-copy I/O
-- [ ] Data streaming — progressive loading and rendering of large datasets
-- [ ] Plugin system — dynamic loading of filter/reader/writer plugins
+- [x] MPI support — `vtk-parallel` crate: spatial decomposition, ghost exchange, collective ops (serial stubs + feature-gated `mpi` backend)
+- [x] GPU compute filters — `vtk-filters-gpu` crate: `GpuContext`, scale/offset, element-wise math (10 ops), parallel reduction, face normals (4 WGSL compute shaders)
+- [x] Memory-mapped data — `MmapDataArray`/`MmapPointCloud` binary f64 I/O with offset-based lazy loading
+- [x] Data streaming — `StreamingPolyData` (point chunks), `StreamingImageData` (Z-slices), `collect_stream()` merge
+- [x] Plugin system — `FilterRegistry` + `ReaderRegistry` with HashMap-based registration and dispatch
 
 #### Lower Priority
 - [ ] In-situ visualization — co-processing with simulation codes
-- [ ] Web viewer — WASM-based interactive 3D viewer in browser
+- [x] Web viewer — `WebViewerConfig` + `generate_html()` with embedded scene JSON + canvas + WebGPU JS stub
 - [ ] Jupyter integration — inline rendering in Jupyter notebooks via Python bindings
 - [ ] Language bindings — Java, C, JavaScript/TypeScript bindings

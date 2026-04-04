@@ -45,6 +45,11 @@ members = [
     "crates/vtk-filters-mesh-2",
     "crates/vtk-python",
     "crates/vtk",
+    "crates/vtk-filters-gpu",
+    "crates/vtk-io-dicom",
+    "crates/vtk-io-video",
+    "crates/vtk-io-hdf5",
+    "crates/vtk-parallel",
 ]
 resolver = "2"
 

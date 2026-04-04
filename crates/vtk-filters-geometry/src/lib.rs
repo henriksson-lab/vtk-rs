@@ -68,3 +68,6 @@ pub mod reeb_graph_filter;
 pub mod reeb_simplify;
 pub mod uncertainty_tube;
 pub mod imprint_filter;
+pub mod reeb_skeleton;
+pub mod reeb_join_split;
+pub mod fiber_surface;

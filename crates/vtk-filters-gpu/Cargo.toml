@@ -1,0 +1,11 @@
+[package]
+name = "vtk-filters-gpu"
+version = "0.1.0"
+edition = "2021"
+description = "GPU compute filters for vtk-rs using wgpu compute shaders"
+
+[dependencies]
+vtk-data = { path = "../vtk-data" }
+wgpu = { workspace = true }
+bytemuck = { workspace = true }
+pollster = { workspace = true }

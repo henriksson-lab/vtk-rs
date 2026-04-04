@@ -71,7 +71,7 @@ pub use skybox::Skybox;
 pub use bloom::BloomConfig;
 pub use annotation::{Annotations, Label3D, DistanceRuler, AngleProtractor};
 pub use stereo::{StereoConfig, StereoMode};
-pub use texture::Texture;
+pub use texture::{Texture, TextureAtlas, AtlasRegion};
 pub use lod::{LodSet, LodLevel};
 pub use instancing::{InstancedGlyphs, GlyphInstance};
 pub use volume::{VolumeActor, TransferFunction};
@@ -82,3 +82,17 @@ pub use ssao::SsaoConfig;
 pub use dof::DofConfig;
 pub use environment::EnvironmentMap;
 pub use axes_cube::AxesCube;
+
+pub mod impostor;
+pub use impostor::ImpostorConfig;
+pub mod context_2d;
+pub use context_2d::Context2D;
+pub mod ray_tracer;
+pub mod subdivision_render;
+pub mod path_tracer;
+pub mod parallel_render;
+pub mod web_viewer;
+#[cfg(feature = "truetype")]
+pub mod truetype_font;
+#[cfg(feature = "truetype")]
+pub use truetype_font::TrueTypeFont;
