@@ -50,6 +50,7 @@ members = [
     "crates/vtk-io-video",
     "crates/vtk-io-hdf5",
     "crates/vtk-parallel",
+    "crates/vtk-io-gdal",
 ]
 resolver = "2"
 

@@ -1304,7 +1304,7 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 - [x] MINC `.mnc` — `vtk-io-hdf5` crate, feature `minc`: read neuroimaging volumes (requires `libnetcdf-dev`)
 
 #### Lower Priority (require heavy C/C++ dependencies)
-- [ ] GDAL — Geospatial raster/vector via GDAL C library
+- [x] GDAL — `vtk-io-gdal` crate, feature `gdal`: raster (GeoTIFF→ImageData, DEM→elevation mesh) + vector (Shapefile/GeoPackage→PolyData)
 - [ ] PDAL — Point cloud via PDAL C library
 - [ ] OCCT/STEP/IGES — CAD formats via OpenCASCADE C++ library
 - [x] FFMPEG — `vtk-io-video` crate: `FrameSequence` + PPM writer (no deps) + FFmpeg encoder (feature-gated `ffmpeg`)
