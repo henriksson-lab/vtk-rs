@@ -11,65 +11,31 @@ vtk-rs is a pure Rust reimplementation of VTK (The Visualization Toolkit). The `
 ```bash
 cargo build                              # build all crates
 cargo test --workspace --exclude vtk-python  # run all tests (~2350+)
+cargo test -p vtk-data                   # test a single crate
+cargo test -p vtk-filters test_normals   # run a single test by name
 cargo clippy --workspace -- -D warnings  # lint
-cargo run --example triangle             # render a triangle (requires GPU)
-cargo run --example shapes               # render sphere/cube/cone/cylinder/arrow
-cargo run --example isosurface           # marching cubes on a gyroid field, writes gyroid.stl
-cargo run --example scalar_colors        # elevation-colored sphere/cone/plane with colormaps
 cargo run --example showcase             # PBR, transparency, axes, scalar bar, keyboard controls
-cargo run --example pipeline_demo        # filter pipeline + multi-format I/O + topology analysis
 cargo run --release --example bench_filters  # performance benchmarks
 ```
 
 ## Workspace Structure
 
-```
-crates/
-  vtk-types/       # Scalar trait, ScalarType, CellType (46 types), VtkError, BoundingBox, ImplicitFunction, higher_order
-  vtk-data/        # DataArray, CellArray, Points, FieldData, DataSetAttributes, PolyData, ImageData, UnstructuredGrid, RectilinearGrid, StructuredGrid, MultiBlockDataSet, Table, KdTree, OctreePointLocator, CellLocator, Selection, Graph, Tree, ExplicitStructuredGrid, HyperTreeGrid, Molecule
-  vtk-filters/     # 786 filters + 62 sources + pipeline + convert + topology + merge + selection_extract + io_utils
-  vtk-io-legacy/   # VTK legacy format (.vtk) ASCII/binary reader and writer
-  vtk-io-stl/      # STL format ASCII/binary reader and writer
-  vtk-io-obj/      # Wavefront OBJ format reader and writer
-  vtk-io-xml/      # VTK XML format reader/writer (.vtp, .vtu, .vti, .vtr, .vts, .vtm) — ASCII + binary
-  vtk-io-ply/      # Stanford PLY format ASCII and binary reader and writer
-  vtk-io-off/      # Object File Format (OFF/COFF) ASCII reader and writer
-  vtk-io-dxf/      # AutoCAD DXF format reader and writer (3DFACE + LINE)
-  vtk-io-geojson/  # GeoJSON format reader and writer (Point, LineString, Polygon)
-  vtk-io-csv/      # CSV/TSV format reader and writer with flexible delimiters
-  vtk-io-byu/      # BYU Movie format reader and writer
-  vtk-io-las/      # LAS 1.2 LIDAR point cloud reader and writer
-  vtk-io-facet/    # Facet file format reader and writer
-  vtk-io-segy/     # SEG-Y seismic data format reader
-  vtk-io-tecplot/  # Tecplot ASCII data format reader and writer
-  vtk-io-fits/     # FITS astronomy image format reader and writer
-  vtk-io-gltf/     # glTF 2.0 binary (.glb) reader and writer
-  vtk-io-ensight/  # EnSight Gold ASCII reader/writer + LS-DYNA keyword reader
-  vtk-io-xdmf/     # XDMF writer (inline XML data for PolyData + ImageData)
-  vtk-render/      # Backend-agnostic: Camera, Scene, Actor, Renderer, ColorMap (15 presets), Material (Phong + PBR), Light, ScalarBar, AxesWidget, Picker, LOD, InstancedGlyphs, VolumeActor, TransferFunction, Animation, ClipPlane, SilhouetteConfig, Texture, Fog, Measurement
-  vtk-render-wgpu/ # wgpu: MSAA, Phong + PBR shader, edge overlay, wireframe/points, transparency, offscreen, silhouette, overlay (scalar bar + axes + bitmap font), clip planes, fog, per-actor model matrix, GPU volume rendering, GPU color-ID picking
-  vtk-python/      # PyO3 Python bindings (cdylib) — PolyData, sources, filters, I/O
-examples/
-  triangle.rs      # Basic PolyData + render window
-  shapes.rs        # Multiple geometric primitives
-  isosurface.rs    # Marching cubes isosurface extraction
-  scalar_colors.rs # Elevation filter + colormap visualization
-  showcase.rs      # PBR, transparency, axes, scalar bar, keyboard interaction
-  pipeline_demo.rs # Filter pipeline + multi-format I/O + topology analysis
-  volume.rs        # GPU volume rendering with transfer function
-  bench_filters.rs # Performance benchmarks (normals, marching cubes, etc.)
-VTK/               # C++ 9.6.0 reference source (read-only)
-```
+The workspace has ~48 crates organized in layers:
 
-**Dependency graph:** `vtk-render-wgpu → vtk-render → vtk-data → vtk-types`, `vtk-filters → vtk-data + vtk-io-*`, `vtk-io-{legacy,stl,obj,xml,ply,gltf,ensight,xdmf,off,dxf,geojson,csv,byu,las} → vtk-data → vtk-types`
+**Core:** `vtk-types` → `vtk-data` — foundational types and data model
+**Filters:** `vtk-filters` (main) + 20 split crates (`vtk-filters-image`, `vtk-filters-mesh`, `vtk-filters-extract`, `vtk-filters-transform`, `vtk-filters-subdivide`, `vtk-filters-clip`, `vtk-filters-smooth`, `vtk-filters-cell`, `vtk-filters-points`, `vtk-filters-statistics`, `vtk-filters-texture`, `vtk-filters-flow`, `vtk-filters-boolean`, `vtk-filters-grid`, `vtk-filters-data`, `vtk-filters-distance`, `vtk-filters-normals`, `vtk-filters-geometry`, `vtk-filters-image-2`, `vtk-filters-mesh-2`)
+**I/O:** `vtk-io-{legacy,stl,obj,xml,ply,off,dxf,geojson,csv,byu,las,facet,segy,tecplot,fits,gltf,ensight,xdmf}`
+**Rendering:** `vtk-render` (backend-agnostic) → `vtk-render-wgpu` (GPU backend)
+**Bindings:** `vtk-python` (PyO3)
+**Umbrella:** `vtk` — re-exports `vtk-types`, `vtk-data`, `vtk-filters`, `vtk-render` with `use vtk::prelude::*`
+
+**Dependency graph:** `vtk-render-wgpu → vtk-render → vtk-data → vtk-types`, `vtk-filters → vtk-data + vtk-io-*`, all `vtk-io-*` → `vtk-data → vtk-types`
 
 ### Key vtk-filters modules
 
-**Sources (42):** sphere, cube, cone, cylinder, plane, arrow, disk, line, point_source, regular_polygon, arc, superquadric, platonic_solid, frustum, parametric, bounding_box_source, axes, torus, helix, ellipsoid, spring, capsule, geodesic_sphere, grid, text_3d, wavelet, circle, mobius, star, noise_field, ring, klein_bottle, trefoil_knot, cross, boy_surface, spiral, icosphere, mobius_strip, gear, grid_2d, earth, sector
+**Sources (~42):** sphere, cube, cone, cylinder, plane, arrow, disk, line, point_source, regular_polygon, arc, superquadric, platonic_solid, frustum, parametric, bounding_box_source, axes, torus, helix, ellipsoid, spring, capsule, geodesic_sphere, grid, text_3d, wavelet, circle, mobius, star, noise_field, ring, klein_bottle, trefoil_knot, cross, boy_surface, spiral, icosphere, mobius_strip, gear, grid_2d, earth, sector
 
 **Infrastructure:** pipeline (lazy evaluation + caching), convert (dataset conversions), topology (manifold/euler/boundary analysis), merge (combine meshes), selection_extract (apply selections), io_utils (auto-format read/write)
-
-**Filters (570+):** normals, triangulate, append, clean, transform, marching_cubes, clip, elevation, threshold, decimate, smooth, subdivide, warp, connectivity, extract_surface, and 555+ more covering mesh processing, image processing, and data manipulation.
 
 ## Key Design Decisions
 
