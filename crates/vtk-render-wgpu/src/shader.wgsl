@@ -38,12 +38,20 @@ struct Uniforms {
     fog_near: f32,
     fog_far: f32,
     fog_density: f32,
-    _fog_pad: vec2<f32>,
+    shadow_enabled: f32,
+    shadow_darkness: f32,
+    light_vp: mat4x4<f32>,
+    shadow_bias: f32,
+    _shadow_pad: vec3<f32>,
     lights: array<LightData, 8>,
 };
 
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
+@group(0) @binding(1)
+var shadow_map: texture_depth_2d;
+@group(0) @binding(2)
+var shadow_sampler: sampler_comparison;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -122,6 +130,38 @@ fn shade_pbr(
     let diffuse = kd * albedo / PI;
 
     return (diffuse + spec) * light_color * n_dot_l;
+}
+
+fn compute_shadow(world_pos: vec3<f32>) -> f32 {
+    if uniforms.shadow_enabled < 0.5 {
+        return 1.0;
+    }
+    let light_clip = uniforms.light_vp * vec4<f32>(world_pos, 1.0);
+    let ndc = light_clip.xyz / light_clip.w;
+    // Map from [-1,1] to [0,1] UV space
+    let shadow_uv = vec2<f32>(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
+
+    // Out of shadow map bounds → no shadow
+    if shadow_uv.x < 0.0 || shadow_uv.x > 1.0 || shadow_uv.y < 0.0 || shadow_uv.y > 1.0 {
+        return 1.0;
+    }
+
+    let depth = ndc.z;
+    // 3x3 PCF for soft shadows
+    let texel_size = 1.0 / f32(textureDimensions(shadow_map).x);
+    var shadow = 0.0;
+    for (var y = -1; y <= 1; y = y + 1) {
+        for (var x = -1; x <= 1; x = x + 1) {
+            let offset = vec2<f32>(f32(x), f32(y)) * texel_size;
+            shadow += textureSampleCompare(
+                shadow_map, shadow_sampler,
+                shadow_uv + offset,
+                depth - uniforms.shadow_bias,
+            );
+        }
+    }
+    shadow /= 9.0;
+    return 1.0 - uniforms.shadow_darkness * (1.0 - shadow);
 }
 
 @fragment
@@ -223,6 +263,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         let d = max(dot(n, fallback_dir), 0.0);
         total_color = in.color * (0.2 + 0.8 * d);
     }
+
+    // Apply shadow
+    let shadow_factor = compute_shadow(in.world_position);
+    total_color *= shadow_factor;
 
     var final_color = clamp(total_color, vec3<f32>(0.0), vec3<f32>(1.0));
 

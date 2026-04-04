@@ -19,3 +19,4 @@ pub mod mask_points;
 pub mod select_by_scalar;
 pub mod select_enclosed_points;
 pub mod select_polygon;
+pub mod selection_filters;

@@ -11,6 +11,26 @@ pub enum QualityMetric {
     MaxAngle,
     /// Area of the polygon.
     Area,
+    /// Condition number: circumradius / (2 * inradius) for triangles. 1.0 = equilateral.
+    Condition,
+    /// Jacobian: scaled Jacobian determinant (1.0 = ideal, 0 = degenerate).
+    ScaledJacobian,
+    /// Shape: 2*sqrt(3) * area / (sum of squared edge lengths). 1.0 = equilateral.
+    Shape,
+    /// Edge ratio: max edge / min edge.
+    EdgeRatio,
+    /// Skew: max |cos(angle between edges)|. 0.0 = right angle, 1.0 = degenerate.
+    Skew,
+    /// Distortion: area / ideal area. 1.0 = ideal.
+    Distortion,
+    /// Radius ratio: inradius / circumradius. 0.5 = equilateral triangle.
+    RadiusRatio,
+    /// Aspect Frobenius: Frobenius-norm aspect ratio. 1.0 = equilateral.
+    AspectFrobenius,
+    /// Warpage: deviation from planarity for quads (max dihedral angle between sub-triangles).
+    Warpage,
+    /// Taper: ratio of shorter cross-section to longer for quads.
+    Taper,
 }
 
 /// Compute a quality metric for each polygon cell.
@@ -45,6 +65,49 @@ pub fn cell_quality(input: &PolyData, metric: QualityMetric) -> PolyData {
             }
             QualityMetric::Area => {
                 polygon_area(&pts)
+            }
+            QualityMetric::Condition => {
+                if n == 3 { triangle_condition(&pts) } else { 0.0 }
+            }
+            QualityMetric::ScaledJacobian => {
+                if n == 3 { triangle_scaled_jacobian(&pts) } else if n == 4 { quad_scaled_jacobian(&pts) } else { 0.0 }
+            }
+            QualityMetric::Shape => {
+                if n == 3 { triangle_shape(&pts) } else { 0.0 }
+            }
+            QualityMetric::EdgeRatio => {
+                let edges = edge_lengths(&pts);
+                let min_e = edges.iter().cloned().fold(f64::MAX, f64::min);
+                let max_e = edges.iter().cloned().fold(0.0f64, f64::max);
+                if min_e > 1e-20 { max_e / min_e } else { f64::MAX }
+            }
+            QualityMetric::Skew => {
+                if n >= 3 {
+                    let angles = interior_angles(&pts);
+                    let half_pi = std::f64::consts::FRAC_PI_2;
+                    angles.iter().map(|a| (a - half_pi).abs() / half_pi).fold(0.0f64, f64::max)
+                } else { 0.0 }
+            }
+            QualityMetric::Distortion => {
+                if n == 3 {
+                    let area = polygon_area(&pts);
+                    let edges = edge_lengths(&pts);
+                    let ideal = edges.iter().sum::<f64>() / 3.0;
+                    let ideal_area = (3.0f64).sqrt() / 4.0 * ideal * ideal;
+                    if ideal_area > 1e-20 { area / ideal_area } else { 0.0 }
+                } else { 0.0 }
+            }
+            QualityMetric::RadiusRatio => {
+                if n == 3 { triangle_radius_ratio(&pts) } else { 0.0 }
+            }
+            QualityMetric::AspectFrobenius => {
+                if n == 3 { triangle_aspect_frobenius(&pts) } else { 0.0 }
+            }
+            QualityMetric::Warpage => {
+                if n == 4 { quad_warpage(&pts) } else { 0.0 }
+            }
+            QualityMetric::Taper => {
+                if n == 4 { quad_taper(&pts) } else { 0.0 }
             }
         };
         values.push(val);
@@ -91,6 +154,142 @@ fn polygon_area(pts: &[[f64; 3]]) -> f64 {
         total += 0.5 * (c[0]*c[0] + c[1]*c[1] + c[2]*c[2]).sqrt();
     }
     total
+}
+
+// --- Verdict-style triangle metrics ---
+
+fn triangle_condition(pts: &[[f64; 3]]) -> f64 {
+    // Condition = circumradius / (2 * inradius)
+    let edges = edge_lengths(pts);
+    let (a, b, c) = (edges[0], edges[1], edges[2]);
+    let s = (a + b + c) / 2.0;
+    let area = polygon_area(pts);
+    if area < 1e-30 { return f64::MAX; }
+    let circumradius = a * b * c / (4.0 * area);
+    let inradius = area / s;
+    if inradius < 1e-30 { return f64::MAX; }
+    circumradius / (2.0 * inradius)
+}
+
+fn triangle_scaled_jacobian(pts: &[[f64; 3]]) -> f64 {
+    // Scaled Jacobian for triangle: 2 * area / (max_edge^2 * sqrt(3))
+    let area = polygon_area(pts);
+    let edges = edge_lengths(pts);
+    let max_e = edges.iter().cloned().fold(0.0f64, f64::max);
+    if max_e < 1e-30 { return 0.0; }
+    2.0 * area / (max_e * max_e * (3.0f64).sqrt())
+}
+
+fn triangle_shape(pts: &[[f64; 3]]) -> f64 {
+    // Shape = 2*sqrt(3) * area / sum(edge_i^2)
+    let area = polygon_area(pts);
+    let edges = edge_lengths(pts);
+    let sum_sq: f64 = edges.iter().map(|e| e * e).sum();
+    if sum_sq < 1e-30 { return 0.0; }
+    2.0 * (3.0f64).sqrt() * area / sum_sq
+}
+
+fn triangle_radius_ratio(pts: &[[f64; 3]]) -> f64 {
+    let edges = edge_lengths(pts);
+    let (a, b, c) = (edges[0], edges[1], edges[2]);
+    let s = (a + b + c) / 2.0;
+    let area = polygon_area(pts);
+    if area < 1e-30 { return 0.0; }
+    let inradius = area / s;
+    let circumradius = a * b * c / (4.0 * area);
+    if circumradius < 1e-30 { return 0.0; }
+    inradius / circumradius
+}
+
+fn triangle_aspect_frobenius(pts: &[[f64; 3]]) -> f64 {
+    // Frobenius norm aspect ratio: (sum of edge^2) / (4*sqrt(3)*area)
+    let area = polygon_area(pts);
+    let edges = edge_lengths(pts);
+    let sum_sq: f64 = edges.iter().map(|e| e * e).sum();
+    if area < 1e-30 { return f64::MAX; }
+    sum_sq / (4.0 * (3.0f64).sqrt() * area)
+}
+
+fn quad_scaled_jacobian(pts: &[[f64; 3]]) -> f64 {
+    // Minimum scaled Jacobian at the 4 corners
+    let mut min_j = f64::MAX;
+    for i in 0..4 {
+        let p0 = pts[i];
+        let p1 = pts[(i + 1) % 4];
+        let p3 = pts[(i + 3) % 4];
+        let e0 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+        let e1 = [p3[0] - p0[0], p3[1] - p0[1], p3[2] - p0[2]];
+        let cross = [
+            e0[1] * e1[2] - e0[2] * e1[1],
+            e0[2] * e1[0] - e0[0] * e1[2],
+            e0[0] * e1[1] - e0[1] * e1[0],
+        ];
+        let jac = (cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2]).sqrt();
+        let l0 = (e0[0] * e0[0] + e0[1] * e0[1] + e0[2] * e0[2]).sqrt();
+        let l1 = (e1[0] * e1[0] + e1[1] * e1[1] + e1[2] * e1[2]).sqrt();
+        let denom = l0 * l1;
+        if denom > 1e-30 {
+            min_j = min_j.min(jac / denom);
+        }
+    }
+    if min_j == f64::MAX { 0.0 } else { min_j }
+}
+
+fn quad_warpage(pts: &[[f64; 3]]) -> f64 {
+    // Warpage: angle between normals of two sub-triangles
+    let n1 = tri_normal(pts[0], pts[1], pts[2]);
+    let n2 = tri_normal(pts[0], pts[2], pts[3]);
+    let dot = n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2];
+    dot.clamp(-1.0, 1.0).acos().to_degrees()
+}
+
+fn quad_taper(pts: &[[f64; 3]]) -> f64 {
+    // Taper: min(cross diagonal length) / max(cross diagonal length)
+    let d1 = dist(pts[0], pts[2]);
+    let d2 = dist(pts[1], pts[3]);
+    let (min_d, max_d) = if d1 < d2 { (d1, d2) } else { (d2, d1) };
+    if max_d < 1e-30 { 0.0 } else { min_d / max_d }
+}
+
+fn tri_normal(a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> [f64; 3] {
+    let e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    let e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    let n = [e1[1]*e2[2]-e1[2]*e2[1], e1[2]*e2[0]-e1[0]*e2[2], e1[0]*e2[1]-e1[1]*e2[0]];
+    let len = (n[0]*n[0]+n[1]*n[1]+n[2]*n[2]).sqrt();
+    if len < 1e-30 { [0.0, 0.0, 1.0] } else { [n[0]/len, n[1]/len, n[2]/len] }
+}
+
+fn dist(a: [f64; 3], b: [f64; 3]) -> f64 {
+    let d = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
+    (d[0]*d[0]+d[1]*d[1]+d[2]*d[2]).sqrt()
+}
+
+/// Compute all Verdict-style quality metrics at once, adding multiple arrays.
+pub fn mesh_quality_verdict(input: &PolyData) -> PolyData {
+    let metrics = [
+        (QualityMetric::AspectRatio, "AspectRatio"),
+        (QualityMetric::MinAngle, "MinAngle"),
+        (QualityMetric::MaxAngle, "MaxAngle"),
+        (QualityMetric::Area, "Area"),
+        (QualityMetric::Condition, "Condition"),
+        (QualityMetric::ScaledJacobian, "ScaledJacobian"),
+        (QualityMetric::Shape, "Shape"),
+        (QualityMetric::EdgeRatio, "EdgeRatio"),
+        (QualityMetric::Skew, "Skew"),
+        (QualityMetric::RadiusRatio, "RadiusRatio"),
+        (QualityMetric::AspectFrobenius, "AspectFrobenius"),
+    ];
+    let mut pd = input.clone();
+    for (metric, name) in &metrics {
+        let result = cell_quality(input, *metric);
+        if let Some(arr) = result.cell_data().get_array("Quality") {
+            pd.cell_data_mut().add_array(match arr {
+                AnyDataArray::F64(a) => AnyDataArray::F64(DataArray::from_vec(*name, a.as_slice().to_vec(), 1)),
+                other => other.clone(),
+            });
+        }
+    }
+    pd
 }
 
 #[cfg(test)]

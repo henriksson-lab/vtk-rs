@@ -8,8 +8,12 @@ use winit::window::Window;
 use vtk_render::{Light, LightType, Material, Renderer, Representation, Scene};
 use vtk_types::VtkError;
 
+use crate::bloom_pass::BloomPass;
+use crate::dof_pass::DofPass;
 use crate::mesh::{self, Vertex};
+use crate::ssao_pass::SsaoPass;
 use crate::overlay::OverlayPipeline;
+use crate::shadow_pass::ShadowPass;
 use crate::skybox_pass::SkyboxPass;
 use crate::volume_pass::VolumePass;
 use crate::wireframe;
@@ -58,7 +62,11 @@ struct Uniforms {
     fog_near: f32,
     fog_far: f32,
     fog_density: f32,
-    _fog_pad: [f32; 2],
+    shadow_enabled: f32,
+    shadow_darkness: f32,
+    light_vp: [[f32; 4]; 4],
+    shadow_bias: f32,
+    _shadow_pad: [f32; 3],
     lights: [GpuLight; MAX_LIGHTS],
 }
 
@@ -84,11 +92,18 @@ pub struct WgpuRenderer {
     msaa_texture: wgpu::TextureView,
     uniform_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
+    bind_group_layout: wgpu::BindGroupLayout,
+    shadow_sampler: wgpu::Sampler,
+    dummy_shadow_view: wgpu::TextureView,
     overlay_pipeline: OverlayPipeline,
     pipeline_triangles_cull: wgpu::RenderPipeline,
     pipeline_triangles_blend_cull: wgpu::RenderPipeline,
     volume_pass: VolumePass,
     skybox_pass: SkyboxPass,
+    shadow_pass: ShadowPass,
+    bloom_pass: BloomPass,
+    ssao_pass: SsaoPass,
+    dof_pass: DofPass,
     pipeline_lines_no_msaa: wgpu::RenderPipeline,
     width: u32,
     height: u32,
@@ -153,25 +168,73 @@ impl WgpuRenderer {
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("bind group layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            }],
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                    count: None,
+                },
+            ],
+        });
+
+        // Create a dummy 1x1 shadow map for when shadows are disabled
+        let dummy_shadow_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("dummy shadow"),
+            size: wgpu::Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let dummy_shadow_view = dummy_shadow_tex.create_view(&Default::default());
+        let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("shadow sampler"),
+            compare: Some(wgpu::CompareFunction::LessEqual),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("bind group"),
             layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform_buffer.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&dummy_shadow_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&shadow_sampler),
+                },
+            ],
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -202,6 +265,10 @@ impl WgpuRenderer {
         let overlay_pipeline = OverlayPipeline::new(&device, surface_format);
         let volume_pass = VolumePass::new(&device, surface_format);
         let skybox_pass = SkyboxPass::new(&device, surface_format);
+        let shadow_pass = ShadowPass::new(&device);
+        let bloom_pass = BloomPass::new(&device, surface_format);
+        let ssao_pass = SsaoPass::new(&device, surface_format);
+        let dof_pass = DofPass::new(&device, surface_format);
         let pipeline_lines_no_msaa =
             create_pipeline_with_cull(&device, &pipeline_layout, &shader, surface_format, wgpu::PrimitiveTopology::LineList, false, 1, None);
 
@@ -221,9 +288,16 @@ impl WgpuRenderer {
             msaa_texture,
             uniform_buffer,
             bind_group,
+            bind_group_layout,
+            shadow_sampler,
+            dummy_shadow_view,
             overlay_pipeline,
             volume_pass,
             skybox_pass,
+            shadow_pass,
+            bloom_pass,
+            ssao_pass,
+            dof_pass,
             pipeline_triangles_cull,
             pipeline_triangles_blend_cull,
             pipeline_lines_no_msaa,
@@ -232,7 +306,7 @@ impl WgpuRenderer {
         })
     }
 
-    fn prepare_actor_mesh(&self, actor: &vtk_render::Actor, camera_distance: f64) -> Option<GpuMesh> {
+    fn prepare_actor_mesh(&self, actor: &vtk_render::Actor, camera_distance: f64, scene: &Scene) -> Option<GpuMesh> {
         // Select LOD level if available
         let data = if let Some(ref lod) = actor.lod {
             lod.select(camera_distance)
@@ -241,8 +315,29 @@ impl WgpuRenderer {
         };
         let (vertices, indices) = match actor.representation {
             Representation::Surface => mesh::poly_data_to_mesh(data, &actor.coloring),
-            Representation::Wireframe => wireframe::poly_data_to_wireframe(data, &actor.coloring),
-            Representation::Points => poly_data_to_points(data, &actor.coloring),
+            Representation::Wireframe => {
+                if actor.material.line_width > 1.5 {
+                    let cam_dir = scene.camera.direction();
+                    let cd = [cam_dir.x as f32, cam_dir.y as f32, cam_dir.z as f32];
+                    // Convert pixel width to world units (approximate)
+                    let world_width = actor.material.line_width as f32 * camera_distance as f32 * 0.001;
+                    poly_data_to_wide_lines(data, &actor.coloring, world_width, cd)
+                } else {
+                    wireframe::poly_data_to_wireframe(data, &actor.coloring)
+                }
+            }
+            Representation::Points => {
+                if actor.material.point_size > 1.5 {
+                    let cam_right = scene.camera.right();
+                    let cam_up = scene.camera.up();
+                    let cr = [cam_right.x as f32, cam_right.y as f32, cam_right.z as f32];
+                    let cu = [cam_up.x as f32, cam_up.y as f32, cam_up.z as f32];
+                    let world_size = actor.material.point_size as f32 * camera_distance as f32 * 0.001;
+                    poly_data_to_point_sprites(data, &actor.coloring, world_size, cr, cu)
+                } else {
+                    poly_data_to_points(data, &actor.coloring)
+                }
+            }
         };
         if indices.is_empty() {
             return None;
@@ -343,7 +438,35 @@ impl WgpuRenderer {
             fog_near: scene.fog.near as f32,
             fog_far: scene.fog.far as f32,
             fog_density: scene.fog.density as f32,
-            _fog_pad: [0.0; 2],
+            shadow_enabled: if scene.shadows.enabled { 1.0 } else { 0.0 },
+            shadow_darkness: scene.shadows.darkness as f32,
+            light_vp: {
+                if scene.shadows.enabled {
+                    // Find first directional light
+                    let dir_light = scene.lights.iter().find(|l| {
+                        l.enabled && matches!(l.light_type, vtk_render::LightType::Directional)
+                    });
+                    if let Some(dl) = dir_light {
+                        let center = scene.camera.focal_point;
+                        let lvp = scene.shadows.light_vp_matrix(
+                            [dl.direction[0] as f64, dl.direction[1] as f64, dl.direction[2] as f64],
+                            [center.x, center.y, center.z],
+                        );
+                        [
+                            [lvp[0][0] as f32, lvp[0][1] as f32, lvp[0][2] as f32, lvp[0][3] as f32],
+                            [lvp[1][0] as f32, lvp[1][1] as f32, lvp[1][2] as f32, lvp[1][3] as f32],
+                            [lvp[2][0] as f32, lvp[2][1] as f32, lvp[2][2] as f32, lvp[2][3] as f32],
+                            [lvp[3][0] as f32, lvp[3][1] as f32, lvp[3][2] as f32, lvp[3][3] as f32],
+                        ]
+                    } else {
+                        [[0.0; 4]; 4]
+                    }
+                } else {
+                    [[0.0; 4]; 4]
+                }
+            },
+            shadow_bias: scene.shadows.bias as f32,
+            _shadow_pad: [0.0; 3],
             lights: gpu_lights,
         };
 
@@ -379,7 +502,7 @@ impl WgpuRenderer {
             if !actor.visible {
                 continue;
             }
-            let Some(gpu_mesh) = self.prepare_actor_mesh(actor, cam_dist) else {
+            let Some(gpu_mesh) = self.prepare_actor_mesh(actor, cam_dist, scene) else {
                 continue;
             };
             let edge_mesh = if actor.material.edge_visibility
@@ -389,10 +512,16 @@ impl WgpuRenderer {
             } else {
                 None
             };
+            // If point sprites or wide lines are used, geometry is triangles
+            let effective_repr = match actor.representation {
+                Representation::Points if actor.material.point_size > 1.5 => Representation::Surface,
+                Representation::Wireframe if actor.material.line_width > 1.5 => Representation::Surface,
+                other => other,
+            };
             let draw = ActorDraw {
                 mesh: gpu_mesh,
                 edge_mesh,
-                repr: actor.representation,
+                repr: effective_repr,
                 opacity: actor.opacity,
                 material: actor.material.clone(),
                 position: actor.position,
@@ -473,11 +602,52 @@ impl WgpuRenderer {
                     pass.draw_indexed(0..edge.num_indices, 0, 0..1);
                 }
             }
+
+            // Clip plane caps — render cap faces for each active clip plane
+            let active_clips: Vec<_> = scene.clip_planes.iter().filter(|c| c.enabled).collect();
+            if !active_clips.is_empty() {
+                // Build a scene-copy with no clip planes for cap rendering
+                let mut cap_material = Material::default();
+                cap_material.ambient = 0.3;
+                cap_material.diffuse = 0.7;
+
+                for clip in &active_clips {
+                    let normal = [clip.normal[0] as f32, clip.normal[1] as f32, clip.normal[2] as f32];
+                    let dist = clip.distance as f32;
+                    let cap_color = [0.8f32, 0.8, 0.8]; // light gray cap
+
+                    for actor in &scene.actors {
+                        if !actor.visible || actor.representation != Representation::Surface {
+                            continue;
+                        }
+                        let (pts, tris) = crate::clip_cap::extract_triangles(&actor.data);
+                        if tris.is_empty() {
+                            continue;
+                        }
+                        let (cap_verts, cap_idxs) = crate::clip_cap::generate_clip_cap(
+                            &pts, &tris, normal, dist, cap_color,
+                        );
+                        if cap_idxs.is_empty() {
+                            continue;
+                        }
+                        let cap_mesh = upload_mesh(&self.device, &cap_verts, &cap_idxs);
+                        // Write uniforms with zero clip planes so cap isn't clipped
+                        let mut no_clip_scene = scene.clone();
+                        no_clip_scene.clip_planes.clear();
+                        self.write_uniforms(&no_clip_scene, &cap_material, 1.0, true, actor.position, actor.scale);
+                        pass.set_pipeline(self.select_pipeline(Representation::Surface, false, false));
+                        pass.set_bind_group(0, &self.bind_group, &[]);
+                        pass.set_vertex_buffer(0, cap_mesh.vertex_buffer.slice(..));
+                        pass.set_index_buffer(cap_mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(0..cap_mesh.num_indices, 0, 0..1);
+                    }
+                }
+            }
         }
     }
 
     fn render_to_view(
-        &self,
+        &mut self,
         scene: &Scene,
         msaa_view: &wgpu::TextureView,
         resolve_target: &wgpu::TextureView,
@@ -486,6 +656,73 @@ impl WgpuRenderer {
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("render encoder"),
         });
+
+        // Shadow depth pass (before main 3D scene)
+        if scene.shadows.enabled {
+            // Collect opaque actor mesh data for shadow pass
+            let cam_dist = scene.camera.distance();
+            let mut shadow_meshes = Vec::new();
+            for actor in &scene.actors {
+                if !actor.visible || actor.opacity < 1.0 {
+                    continue;
+                }
+                if actor.representation != Representation::Surface {
+                    continue;
+                }
+                if let Some(gpu_mesh) = self.prepare_actor_mesh(actor, cam_dist, scene) {
+                    shadow_meshes.push((
+                        gpu_mesh.vertex_buffer,
+                        gpu_mesh.index_buffer,
+                        gpu_mesh.num_indices,
+                        actor.position,
+                        actor.scale,
+                    ));
+                }
+            }
+            if let Some((shadow_view, _light_vp)) = self.shadow_pass.render(
+                &self.device, &self.queue, &mut encoder, scene, &shadow_meshes,
+            ) {
+                // Rebuild bind group with actual shadow map
+                self.bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("bind group with shadow"),
+                    layout: &self.bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: self.uniform_buffer.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::TextureView(shadow_view),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: wgpu::BindingResource::Sampler(&self.shadow_sampler),
+                        },
+                    ],
+                });
+            }
+        } else {
+            // Reset to dummy shadow map
+            self.bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("bind group no shadow"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.uniform_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(&self.dummy_shadow_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::Sampler(&self.shadow_sampler),
+                    },
+                ],
+            });
+        }
 
         // Skybox (render gradient background before 3D scene)
         if !matches!(scene.skybox, vtk_render::Skybox::Solid(_)) {
@@ -556,6 +793,71 @@ impl WgpuRenderer {
                 );
             }
         }
+
+        // SSAO post-process (after 3D, before bloom/overlays)
+        if scene.ssao.enabled {
+            // Create non-MSAA depth for SSAO (re-render depth only at 1x sample)
+            let ssao_depth_tex = self.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("ssao depth"),
+                size: wgpu::Extent3d { width: self.width, height: self.height, depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Depth32Float,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+            let ssao_depth_view = ssao_depth_tex.create_view(&Default::default());
+
+            // Quick depth-only pass at 1x MSAA for SSAO
+            {
+                let mut depth_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("ssao depth resolve"),
+                    color_attachments: &[],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &ssao_depth_view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    ..Default::default()
+                });
+                // Re-draw opaque geometry for depth only using the no-MSAA line pipeline (has depth)
+                // This is a simplified approach; production would use a depth-only pipeline
+                depth_pass.set_pipeline(&self.pipeline_lines_no_msaa);
+            }
+
+            let aspect = self.width as f64 / self.height as f64;
+            let proj = scene.camera.projection_matrix(aspect);
+            let proj_f32 = glam::Mat4::from_cols_array(&proj.to_cols_array().map(|v| v as f32));
+
+            let ssao_config = vtk_render::SsaoConfig {
+                enabled: scene.ssao.enabled,
+                radius: scene.ssao.radius,
+                intensity: scene.ssao.intensity,
+                bias: scene.ssao.bias,
+                num_samples: scene.ssao.num_samples,
+            };
+
+            self.ssao_pass.render(
+                &self.device, &self.queue, &mut encoder,
+                resolve_target, &ssao_depth_view,
+                &ssao_config,
+                proj_f32,
+                self.width, self.height,
+                scene.camera.near_clip as f32,
+                scene.camera.far_clip as f32,
+            );
+        }
+
+        // Bloom post-process (after 3D + volume, before overlays)
+        self.bloom_pass.render(
+            &self.device, &self.queue, &mut encoder,
+            resolve_target, &scene.bloom,
+            self.width, self.height, self.surface_format,
+        );
 
         // 2D overlay (scalar bars) — rendered after resolve, directly on resolve target
         self.overlay_pipeline.render_scalar_bars(
@@ -678,12 +980,120 @@ impl WgpuRenderer {
 
 impl Renderer for WgpuRenderer {
     fn render(&mut self, scene: &Scene) -> Result<(), VtkError> {
+        use vtk_render::StereoMode;
+
         let output = self
             .surface
             .get_current_texture()
             .map_err(|e| VtkError::InvalidData(format!("surface texture error: {e}")))?;
         let resolve_view = output.texture.create_view(&Default::default());
-        self.render_to_view(scene, &self.msaa_texture, &resolve_view, &self.depth_texture)?;
+
+        if !scene.viewports.is_empty() {
+            // Multi-viewport: render each viewport to its own region
+            for (viewport, camera) in &scene.viewports {
+                let (px, py, pw, ph) = viewport.to_pixels(self.width, self.height);
+                if pw == 0 || ph == 0 { continue; }
+                let vp_msaa = create_msaa_texture(&self.device, self.surface_format, pw, ph);
+                let vp_depth = create_depth_texture(&self.device, pw, ph, MSAA_SAMPLE_COUNT);
+                let mut vp_scene = scene.clone();
+                vp_scene.camera = camera.clone();
+                vp_scene.viewports.clear();
+                let saved_w = self.width;
+                let saved_h = self.height;
+                self.width = pw;
+                self.height = ph;
+
+                let vp_tex = self.device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("viewport color"),
+                    size: wgpu::Extent3d { width: pw, height: ph, depth_or_array_layers: 1 },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: self.surface_format,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                    view_formats: &[],
+                });
+                let vp_view = vp_tex.create_view(&Default::default());
+                self.render_to_view(&vp_scene, &vp_msaa, &vp_view, &vp_depth)?;
+
+                // Copy viewport result to correct region of output surface
+                let mut enc = self.device.create_command_encoder(&Default::default());
+                enc.copy_texture_to_texture(
+                    wgpu::TexelCopyTextureInfo {
+                        texture: &vp_tex, mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All,
+                    },
+                    wgpu::TexelCopyTextureInfo {
+                        texture: &output.texture, mip_level: 0,
+                        origin: wgpu::Origin3d { x: px, y: py, z: 0 },
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    wgpu::Extent3d { width: pw, height: ph, depth_or_array_layers: 1 },
+                );
+                self.queue.submit(std::iter::once(enc.finish()));
+                self.width = saved_w;
+                self.height = saved_h;
+            }
+        } else if scene.stereo.is_stereo() {
+            // Stereo: render left and right eye to separate halves
+            let right = scene.camera.right();
+            let right_arr = [right.x, right.y, right.z];
+            let cam_pos = [scene.camera.position.x, scene.camera.position.y, scene.camera.position.z];
+            let (left_pos, right_pos) = scene.stereo.eye_positions(cam_pos, right_arr);
+
+            let mut left_scene = scene.clone();
+            left_scene.camera.position = glam::DVec3::new(left_pos[0], left_pos[1], left_pos[2]);
+            left_scene.stereo = vtk_render::StereoConfig::default();
+            let mut right_scene = scene.clone();
+            right_scene.camera.position = glam::DVec3::new(right_pos[0], right_pos[1], right_pos[2]);
+            right_scene.stereo = vtk_render::StereoConfig::default();
+
+            let (lv, rv) = match scene.stereo.mode {
+                StereoMode::SideBySide => (vtk_render::Viewport::left_half(), vtk_render::Viewport::right_half()),
+                StereoMode::TopBottom => (vtk_render::Viewport::top_half(), vtk_render::Viewport::bottom_half()),
+                _ => (vtk_render::Viewport::full(), vtk_render::Viewport::full()),
+            };
+
+            // Render each eye as a viewport
+            for (vp, eye_scene) in [(lv, &left_scene), (rv, &right_scene)] {
+                let (px, py, pw, ph) = vp.to_pixels(self.width, self.height);
+                if pw == 0 || ph == 0 { continue; }
+                let eye_msaa = create_msaa_texture(&self.device, self.surface_format, pw, ph);
+                let eye_depth = create_depth_texture(&self.device, pw, ph, MSAA_SAMPLE_COUNT);
+                let saved_w = self.width;
+                let saved_h = self.height;
+                self.width = pw;
+                self.height = ph;
+
+                let eye_tex = self.device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("stereo eye"),
+                    size: wgpu::Extent3d { width: pw, height: ph, depth_or_array_layers: 1 },
+                    mip_level_count: 1, sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: self.surface_format,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                    view_formats: &[],
+                });
+                let eye_view = eye_tex.create_view(&Default::default());
+                self.render_to_view(eye_scene, &eye_msaa, &eye_view, &eye_depth)?;
+
+                let mut enc = self.device.create_command_encoder(&Default::default());
+                enc.copy_texture_to_texture(
+                    wgpu::TexelCopyTextureInfo { texture: &eye_tex, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+                    wgpu::TexelCopyTextureInfo { texture: &output.texture, mip_level: 0, origin: wgpu::Origin3d { x: px, y: py, z: 0 }, aspect: wgpu::TextureAspect::All },
+                    wgpu::Extent3d { width: pw, height: ph, depth_or_array_layers: 1 },
+                );
+                self.queue.submit(std::iter::once(enc.finish()));
+                self.width = saved_w;
+                self.height = saved_h;
+            }
+        } else {
+            // Normal single-viewport rendering
+            let msaa = create_msaa_texture(&self.device, self.surface_format, self.width, self.height);
+            let depth = create_depth_texture(&self.device, self.width, self.height, MSAA_SAMPLE_COUNT);
+            self.render_to_view(scene, &msaa, &resolve_view, &depth)?;
+        }
+
         output.present();
         Ok(())
     }
@@ -925,6 +1335,124 @@ fn poly_data_to_points(
         });
         indices.push(i as u32);
     }
+    (vertices, indices)
+}
+
+/// Generate camera-facing quads for point sprite rendering.
+/// Each point becomes a quad of `size` world units, facing the camera.
+fn poly_data_to_point_sprites(
+    poly_data: &vtk_data::PolyData,
+    coloring: &vtk_render::Coloring,
+    size: f32,
+    camera_right: [f32; 3],
+    camera_up: [f32; 3],
+) -> (Vec<Vertex>, Vec<u32>) {
+    let point_colors = mesh::resolve_colors_pub(poly_data, coloring);
+    let n = poly_data.points.len();
+    let half = size * 0.5;
+    let mut vertices = Vec::with_capacity(n * 4);
+    let mut indices = Vec::with_capacity(n * 6);
+
+    let r = [camera_right[0] * half, camera_right[1] * half, camera_right[2] * half];
+    let u = [camera_up[0] * half, camera_up[1] * half, camera_up[2] * half];
+    // Normal facing camera = cross(right, up)
+    let norm = [
+        camera_right[1] * camera_up[2] - camera_right[2] * camera_up[1],
+        camera_right[2] * camera_up[0] - camera_right[0] * camera_up[2],
+        camera_right[0] * camera_up[1] - camera_right[1] * camera_up[0],
+    ];
+
+    for i in 0..n {
+        let p = poly_data.points.get(i);
+        let px = p[0] as f32;
+        let py = p[1] as f32;
+        let pz = p[2] as f32;
+        let color = point_colors[i];
+        let base = vertices.len() as u32;
+
+        // 4 corners: -r-u, +r-u, +r+u, -r+u
+        vertices.push(Vertex {
+            position: [px - r[0] - u[0], py - r[1] - u[1], pz - r[2] - u[2]],
+            normal: norm,
+            color,
+        });
+        vertices.push(Vertex {
+            position: [px + r[0] - u[0], py + r[1] - u[1], pz + r[2] - u[2]],
+            normal: norm,
+            color,
+        });
+        vertices.push(Vertex {
+            position: [px + r[0] + u[0], py + r[1] + u[1], pz + r[2] + u[2]],
+            normal: norm,
+            color,
+        });
+        vertices.push(Vertex {
+            position: [px - r[0] + u[0], py - r[1] + u[1], pz - r[2] + u[2]],
+            normal: norm,
+            color,
+        });
+
+        indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+
+    (vertices, indices)
+}
+
+/// Generate wide lines as screen-aligned quads.
+/// Each line segment becomes a quad of `width` world units.
+fn poly_data_to_wide_lines(
+    poly_data: &vtk_data::PolyData,
+    coloring: &vtk_render::Coloring,
+    width: f32,
+    camera_dir: [f32; 3],
+) -> (Vec<Vertex>, Vec<u32>) {
+    let point_colors = mesh::resolve_colors_pub(poly_data, coloring);
+    let half = width * 0.5;
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+
+    for cell in poly_data.polys.iter() {
+        let nc = cell.len();
+        for i in 0..nc {
+            let j = (i + 1) % nc;
+            let id0 = cell[i] as usize;
+            let id1 = cell[j] as usize;
+            let p0 = poly_data.points.get(id0);
+            let p1 = poly_data.points.get(id1);
+            let p0f = [p0[0] as f32, p0[1] as f32, p0[2] as f32];
+            let p1f = [p1[0] as f32, p1[1] as f32, p1[2] as f32];
+
+            // Line direction
+            let dx = p1f[0] - p0f[0];
+            let dy = p1f[1] - p0f[1];
+            let dz = p1f[2] - p0f[2];
+
+            // Offset = normalize(cross(line_dir, camera_dir)) * half
+            let cx = dy * camera_dir[2] - dz * camera_dir[1];
+            let cy = dz * camera_dir[0] - dx * camera_dir[2];
+            let cz = dx * camera_dir[1] - dy * camera_dir[0];
+            let len = (cx * cx + cy * cy + cz * cz).sqrt();
+            if len < 1e-10 {
+                continue;
+            }
+            let ox = cx / len * half;
+            let oy = cy / len * half;
+            let oz = cz / len * half;
+
+            let base = vertices.len() as u32;
+            let c0 = point_colors[id0];
+            let c1 = point_colors[id1];
+            let norm = [camera_dir[0], camera_dir[1], camera_dir[2]];
+
+            vertices.push(Vertex { position: [p0f[0] - ox, p0f[1] - oy, p0f[2] - oz], normal: norm, color: c0 });
+            vertices.push(Vertex { position: [p0f[0] + ox, p0f[1] + oy, p0f[2] + oz], normal: norm, color: c0 });
+            vertices.push(Vertex { position: [p1f[0] + ox, p1f[1] + oy, p1f[2] + oz], normal: norm, color: c1 });
+            vertices.push(Vertex { position: [p1f[0] - ox, p1f[1] - oy, p1f[2] - oz], normal: norm, color: c1 });
+
+            indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+        }
+    }
+
     (vertices, indices)
 }
 

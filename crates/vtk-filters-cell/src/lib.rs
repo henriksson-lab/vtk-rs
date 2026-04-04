@@ -15,3 +15,4 @@ pub mod separate_cells;
 pub mod shrink;
 pub mod strip;
 pub mod triangulate_strips;
+pub mod boundary_quality;

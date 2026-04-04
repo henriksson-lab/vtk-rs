@@ -117,6 +117,60 @@ impl ScalarBar {
         labels
     }
 
+    /// Generate vertex positions, RGBA colors, and triangle indices for
+    /// rendering a smooth gradient color bar as quads.
+    ///
+    /// Each band interpolates between two adjacent color map values,
+    /// producing a smooth gradient. The bar is rendered as a vertical strip
+    /// from `(x, y)` with the given `width` and `height`.
+    ///
+    /// Returns `(positions, colors, indices)` where positions are `[f32; 2]`,
+    /// colors are `[f32; 4]` RGBA, and indices form triangles.
+    pub fn to_gradient_quads(
+        &self,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        num_bands: usize,
+    ) -> (Vec<[f32; 2]>, Vec<[f32; 4]>, Vec<u32>) {
+        let num_bands = num_bands.max(1);
+        let num_verts = (num_bands + 1) * 2; // 2 vertices per horizontal row
+        let mut positions = Vec::with_capacity(num_verts);
+        let mut colors = Vec::with_capacity(num_verts);
+        let mut indices = Vec::with_capacity(num_bands * 6);
+
+        // Generate vertices: for each row (0..=num_bands), left and right vertices
+        for i in 0..=num_bands {
+            let t = i as f64 / num_bands as f64;
+            let row_y = y + height * t as f32;
+            let rgb = self.color_map.map(t);
+
+            // Left vertex
+            positions.push([x, row_y]);
+            colors.push([rgb[0], rgb[1], rgb[2], 1.0]);
+
+            // Right vertex
+            positions.push([x + width, row_y]);
+            colors.push([rgb[0], rgb[1], rgb[2], 1.0]);
+        }
+
+        // Generate indices: two triangles per band
+        for i in 0..num_bands {
+            let base = (i * 2) as u32;
+            // Triangle 1: bottom-left, bottom-right, top-left
+            indices.push(base);
+            indices.push(base + 1);
+            indices.push(base + 2);
+            // Triangle 2: bottom-right, top-right, top-left
+            indices.push(base + 1);
+            indices.push(base + 3);
+            indices.push(base + 2);
+        }
+
+        (positions, colors, indices)
+    }
+
     /// Generate the title position in NDC.
     pub fn title_position(&self) -> [f32; 2] {
         match self.orientation {
@@ -183,6 +237,30 @@ mod tests {
     fn label_format_normal() {
         assert_eq!(format_label(25.0), "25.0");
         assert_eq!(format_label(0.5), "0.500");
+    }
+
+    #[test]
+    fn gradient_quads() {
+        let sb = ScalarBar::new("T", ColorMap::jet(), [0.0, 1.0]);
+        let (positions, colors, indices) = sb.to_gradient_quads(0.0, 0.0, 0.1, 1.0, 4);
+
+        // 4 bands => 5 rows * 2 verts = 10 vertices
+        assert_eq!(positions.len(), 10);
+        assert_eq!(colors.len(), 10);
+        // 4 bands * 6 indices = 24
+        assert_eq!(indices.len(), 24);
+
+        // Bottom-left vertex at (0, 0)
+        assert!((positions[0][0]).abs() < 1e-6);
+        assert!((positions[0][1]).abs() < 1e-6);
+
+        // Top-left vertex at (0, 1.0)
+        assert!((positions[8][1] - 1.0).abs() < 1e-6);
+
+        // All colors should have alpha=1
+        for c in &colors {
+            assert!((c[3] - 1.0).abs() < 1e-6);
+        }
     }
 
     #[test]

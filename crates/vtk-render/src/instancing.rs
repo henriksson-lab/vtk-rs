@@ -87,6 +87,42 @@ impl InstancedGlyphs {
         result
     }
 
+    /// Flatten a given glyph mesh into a single PolyData by copying and
+    /// transforming it for each instance. Unlike `flatten()`, this uses an
+    /// externally provided glyph rather than `self.template`.
+    ///
+    /// This enables CPU-side instancing for renderers without GPU instancing.
+    pub fn to_flat_poly_data(&self, glyph: &PolyData) -> PolyData {
+        let tpl_npts = glyph.points.len();
+        if tpl_npts == 0 || self.instances.is_empty() {
+            return PolyData::new();
+        }
+
+        let mut result = PolyData::new();
+
+        for inst in &self.instances {
+            let base = result.points.len() as i64;
+
+            // Copy and transform points
+            for i in 0..tpl_npts {
+                let p = glyph.points.get(i);
+                result.points.push([
+                    p[0] * inst.scale as f64 + inst.position[0] as f64,
+                    p[1] * inst.scale as f64 + inst.position[1] as f64,
+                    p[2] * inst.scale as f64 + inst.position[2] as f64,
+                ]);
+            }
+
+            // Copy cells with offset indices
+            for cell in glyph.polys.iter() {
+                let offset_cell: Vec<i64> = cell.iter().map(|&id| id + base).collect();
+                result.polys.push_cell(&offset_cell);
+            }
+        }
+
+        result
+    }
+
     /// Number of instances.
     pub fn len(&self) -> usize {
         self.instances.len()
@@ -136,6 +172,32 @@ mod tests {
         let result = glyphs.flatten();
         let p = result.points.get(1);
         assert!((p[0] - 2.0).abs() < 1e-10); // scaled by 2
+    }
+
+    #[test]
+    fn to_flat_poly_data_external_glyph() {
+        let template = PolyData::from_triangles(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            vec![[0, 1, 2]],
+        );
+
+        // Use a different glyph for flattening
+        let glyph = PolyData::from_triangles(
+            vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
+            vec![[0, 1, 2]],
+        );
+
+        let mut glyphs = InstancedGlyphs::new(template);
+        glyphs.add([0.0, 0.0, 0.0]);
+        glyphs.add([10.0, 0.0, 0.0]);
+
+        let result = glyphs.to_flat_poly_data(&glyph);
+        assert_eq!(result.points.len(), 6); // 2 instances * 3 points
+        assert_eq!(result.polys.num_cells(), 2);
+
+        // Second instance offset check
+        let p = result.points.get(4); // second instance, point index 1 (2.0, 0, 0) + (10, 0, 0)
+        assert!((p[0] - 12.0).abs() < 1e-10);
     }
 
     #[test]

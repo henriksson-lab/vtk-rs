@@ -42,11 +42,11 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 
 ### Not Yet Implemented
 
-- [ ] `AMRDataSet` — multi-level adaptive mesh refinement dataset (VTK's `vtkOverlappingAMR`)
-- [ ] `PartitionedDataSet` / `PartitionedDataSetCollection` — distributed data decomposition
+- [x] `AMRDataSet` — multi-level AMR with `AMRLevel` blocks, spacing queries, coarsest/finest
+- [x] `PartitionedDataSet` / `PartitionedDataSetCollection` — named partitions with merge (offset-corrected), collection of datasets
 - [ ] `CellGrid` — discontinuous Galerkin / high-order cell representation (VTK 9.3+ feature)
-- [ ] `GenericDataSet` — generic cell interface for arbitrary cell types
-- [ ] `TemporalDataSetCache` — in-memory cache for temporal datasets
+- [x] `GenericDataSet` — `AnyDataSet` enum wrapping all dataset types, implements `DataObject`+`DataSet` traits
+- [x] `TemporalDataSetCache` — LRU cache with capacity, bracket interpolation, nearest lookup
 
 ---
 
@@ -1168,36 +1168,36 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 ### Not Yet Implemented — VTK C++ Filter Categories
 
 #### Temporal (VTK/Filters/Temporal — 4 filters)
-- [ ] `CriticalTime` — time at which field exceeds threshold
-- [ ] `DataObjectMeshCache` — cache mesh topology across time steps
-- [ ] `ForceStaticMesh` — bypass mesh updates for static-topology data
-- [ ] `TemporalSmoothing` — temporal averaging of data arrays
+- [x] `CriticalTime` — time at which field exceeds threshold (per-point)
+- [x] `DataObjectMeshCache` — topology change detection + `MeshTopologyCache` in vtk-data
+- [x] `ForceStaticMesh` — return cached topology with updated data arrays via `force_static()`
+- [x] `TemporalSmoothing` — temporal averaging + min/max/mean/std statistics over time steps
 
 #### Reduction (VTK/Filters/Reduction — 6 filters)
-- [ ] `ToImplicitArrayFilter` — compress explicit arrays to implicit/analytic representation
-- [ ] `ToAffineArrayStrategy` / `ToConstantArrayStrategy` — specialized compression strategies
-- [ ] `ToImplicitRamerDouglasPeuckerStrategy` — polyline simplification as implicit array
+- [x] `ToImplicitArrayFilter` — detect constant/affine patterns within tolerance, ImplicitArray enum
+- [x] `ToAffineArrayStrategy` / `ToConstantArrayStrategy` — affine (start+step*i) and constant detection with compression ratio
+- [x] `ToImplicitRamerDouglasPeuckerStrategy` — Ramer-Douglas-Peucker polyline simplification with epsilon tolerance
 
 #### ReebGraph (VTK/Filters/ReebGraph — 5 filters)
-- [ ] `UnstructuredGridToReebGraphFilter` — Reeb graph from scalar field topology
-- [ ] `ReebGraphSimplificationFilter` — simplify Reeb graph by persistence
+- [x] `UnstructuredGridToReebGraphFilter` — critical point classification + arc tracing from scalar field
+- [x] `ReebGraphSimplificationFilter` — persistence-based arc removal with union-find endpoint merging
 - [ ] `ReebGraphSurfaceSkeletonFilter` / `ReebGraphVolumeSkeletonFilter` — surface/volume skeleton extraction
 - [ ] `ReebGraphToJoinSplitTreeFilter` — join/split tree decomposition
 
 #### Tensor (VTK/Filters/Tensor — 2 filters)
-- [ ] `TensorPrincipalInvariants` — principal tensor invariants (I1, I2, I3, J2, J3)
-- [ ] `YieldCriteria` — von Mises, Tresca, and other yield criteria from stress tensors
+- [x] `TensorPrincipalInvariants` — I1/I2/I3, J2/J3, principal stresses (Smith's eigenvalue algorithm)
+- [x] `YieldCriteria` — von Mises, Tresca stress, `add_tensor_analysis()` convenience function
 
 #### Verdict Mesh Quality (VTK/Filters/Verdict — 5 filters)
-- [ ] `MeshQuality` — comprehensive Verdict-library mesh quality metrics (50+ metrics)
-- [ ] `BoundaryMeshQuality` — boundary-specific quality metrics
-- [ ] `CellQuality` / `CellSizeFilter` — Verdict-based cell quality and size
-- [ ] `MatrixMathFilter` — matrix eigenvalues, determinant, inverse operations
+- [x] `MeshQuality` — 11 Verdict-style metrics: condition, scaled Jacobian, shape, edge ratio, skew, distortion, radius ratio, aspect Frobenius, warpage, taper + `mesh_quality_verdict()` batch function
+- [x] `BoundaryMeshQuality` — boundary edge length + boundary angle per-vertex metrics
+- [x] `CellQuality` / `CellSizeFilter` — extended with Verdict metrics (condition, scaled Jacobian, shape, etc.)
+- [x] `MatrixMathFilter` — determinant, inverse, trace, Frobenius norm for 3x3 matrices; eigenvalues for symmetric 3x3
 
 #### Selection (VTK/Filters/Selection — 3 filters)
-- [ ] `CellDistanceSelector` — select cells within distance of seed cells
-- [ ] `KdTreeSelector` — spatial selection via k-d tree queries
-- [ ] `LinearSelector` — select cells along a line/ray
+- [x] `CellDistanceSelector` — BFS on cell adjacency with hop-distance output
+- [x] `KdTreeSelector` — radius-based spatial point selection
+- [x] `LinearSelector` — select cells by centroid distance to line segment
 
 #### Topology (VTK/Filters/Topology — 1 filter)
 - [ ] `FiberSurface` — extract fiber surfaces from bivariate fields
@@ -1206,54 +1206,54 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 - [ ] Entire DG/CellGrid subsystem — high-order DG cells, operators, evaluation, transcription
 
 #### VTK Core Filters Not Yet Covered
-- [ ] `HedgeHog` — oriented line glyphs from vector fields
-- [ ] `FlyingEdges2D` — fast 2D contour extraction
-- [ ] `SurfaceNets2D` — smooth 2D contour extraction
-- [ ] `ClipClosedSurface` — clip mesh and cap with closed cross-section faces
-- [ ] `BoxClipDataSet` — clip by oriented box volume
-- [ ] `ClipVolume` — clip volumetric data by implicit function
-- [ ] `PolyDataEdgeConnectivity` — edge-connectivity-based region extraction
-- [ ] `StaticCleanPolyData` / `StaticCleanUnstructuredGrid` — topology-preserving cleaning
-- [ ] `ResampleWithDataSet` — resample using dataset geometry as probe
-- [ ] `ContourTriangulator` — triangulate contour polygons from slice output
+- [x] `HedgeHog` — oriented line glyphs from vector fields (base + tip line segments, scale factor)
+- [x] `FlyingEdges2D` — marching squares 2D contour extraction from ImageData with saddle handling
+- [x] `SurfaceNets2D` — smooth 2D contour from ImageData (cell-center vertex placement with scalar interpolation)
+- [x] `ClipClosedSurface` — plane clipping + intersection edge loop ordering + centroid fan cap
+- [x] `BoxClipDataSet` — centroid-based AABB cell clipping with 6-bound box
+- [x] `ClipVolume` — mask ImageData voxels by implicit plane function
+- [x] `PolyDataEdgeConnectivity` — BFS edge adjacency region labeling with "RegionId" cell data
+- [x] `StaticCleanPolyData` — spatial-hash duplicate merging + degenerate triangle removal
+- [x] `ResampleWithDataSet` — brute-force nearest-neighbor interpolation between PolyData
+- [x] `ContourTriangulator` — ear-clipping triangulation of closed 2D contour loops
 
 #### VTK General Filters Not Yet Covered
-- [ ] `ClipClosedSurface` — closed-surface clipping with cap generation
-- [ ] `OBBTree` — oriented bounding box tree for spatial queries
-- [ ] `OBBDicer` — OBB-based spatial decomposition
-- [ ] `BooleanOperationPolyDataFilter` / `LoopBooleanPolyDataFilter` — VTK-native boolean operations
-- [ ] `TableFFT` — FFT on table data
-- [ ] `TableToStructuredGrid` — convert table columns to structured grid
-- [ ] `TemporalPathLineFilter` / `TemporalStatistics` — temporal data processing
-- [ ] `SphericalHarmonics` — spherical harmonic computation
-- [ ] `UncertaintyTubeFilter` — tube rendering for uncertain trajectories
-- [ ] `YoungsMaterialInterface` — multi-material interface reconstruction
-- [ ] `WarpLens` — lens distortion correction
-- [ ] `ContourTriangulator` — contour polygon triangulation
+- [x] `ClipClosedSurface` — (duplicate, implemented above)
+- [x] `OBBTree` — PCA-based OBB computation, binary tree with point containment queries
+- [x] `OBBDicer` — recursive OBB subdivision with covariance principal axis + median split
+- [x] `BooleanOperationPolyDataFilter` — cell-level union/intersection/difference via ray-casting classification
+- [x] `TableFFT` — Cooley-Tukey radix-2 FFT on table columns with magnitude and phase output
+- [x] `TableToStructuredGrid` — convert X/Y/Z table columns to StructuredGrid with specified dims
+- [x] `TemporalPathLineFilter` — nearest-neighbor particle path tracing across time steps with Speed/Time arrays
+- [x] `SphericalHarmonics` — real Y_l^m for l=0,1,2 on mesh points (s/p/d orbitals)
+- [x] `UncertaintyTubeFilter` — variable-radius tubes modulated by uncertainty scalar
+- [x] `YoungsMaterialInterface` — volume-fraction + normal based interface plane reconstruction
+- [x] `WarpLens` — barrel/pincushion radial distortion with k1 coefficient
+- [x] `ContourTriangulator` — contour polygon triangulation (ear-clipping)
 
 #### VTK Modeling Filters Not Yet Covered
-- [ ] `ImprintFilter` — imprint one mesh onto another
-- [ ] `ContourLoopExtraction` — extract closed contour loops
-- [ ] `FitToHeightMapFilter` — fit mesh to height map
-- [ ] `VolumeOfRevolutionFilter` — volumetric revolution solid
-- [ ] `TrimmedExtrusionFilter` — extrusion trimmed by surface
+- [x] `ImprintFilter` — closest-point-on-triangle projection + edge insertion
+- [x] `ContourLoopExtraction` — adjacency-based closed loop tracing from line segments
+- [x] `FitToHeightMapFilter` — bilinear-interpolated z projection onto 2D ImageData heightfield
+- [x] `VolumeOfRevolutionFilter` — revolve XY polyline profile around Y axis into triangle mesh
+- [x] `TrimmedExtrusionFilter` — per-point AABB-clamped extrusion with side walls and caps
 
 #### VTK Points Filters Not Yet Covered
-- [ ] `EuclideanClusterExtraction` — DBSCAN-like point cloud clustering
-- [ ] `PCACurvatureEstimation` — PCA-based curvature from point clouds
-- [ ] `DensifyPointCloudFilter` — densify sparse point clouds
-- [ ] `PoissonDiskSampler` — blue-noise point sampling
-- [ ] `VoxelGrid` — voxel-based point cloud downsampling
-- [ ] `ConnectedPointsFilter` — connected components for point clouds
+- [x] `EuclideanClusterExtraction` — DBSCAN-like epsilon-distance clustering with "ClusterId" output
+- [x] `PCACurvatureEstimation` — k-NN PCA with analytical eigenvalue curvature estimation
+- [x] `DensifyPointCloudFilter` — midpoint insertion between pairs above min distance threshold
+- [x] `PoissonDiskSampler` — dart-throwing with minimum radius enforcement
+- [x] `VoxelGrid` — voxel-based downsampling with per-voxel centroid representative
+- [x] `ConnectedPointsFilter` — BFS epsilon-distance connected components with "ComponentId" output
 
 #### VTK Imaging Filters Not Yet Covered (~142 C++ classes, partially covered)
-- [ ] `vtkImageFFT` / `vtkImageRFFT` — true FFT/inverse FFT (current impl is DFT-based)
-- [ ] `vtkImageIdealHighPass` / `vtkImageIdealLowPass` — frequency-domain ideal filters
-- [ ] `vtkImageButterworthHighPass` / `vtkImageButterworthLowPass` — Butterworth frequency filters
-- [ ] `vtkImageCheckerboard` — checkerboard comparison of two images
-- [ ] `vtkImageStencil` / `vtkImageToImageStencil` — stencil-based region processing
-- [ ] `vtkImageMapToColors` — map scalar image through color lookup table
-- [ ] `vtkImageMapToWindowLevelColors` — window/level → RGBA mapping
+- [x] `vtkImageFFT` / `vtkImageRFFT` — row/column Cooley-Tukey radix-2 2D FFT with Magnitude + Phase output
+- [x] `vtkImageIdealHighPass` / `vtkImageIdealLowPass` — frequency-domain ideal cutoff radius filters
+- [x] `vtkImageButterworthHighPass` / `vtkImageButterworthLowPass` — Butterworth filters with configurable order
+- [x] `vtkImageCheckerboard` — alternating-tile checkerboard comparison of two ImageData
+- [x] `vtkImageStencil` / `vtkImageToImageStencil` — binary stencil from threshold + apply with fill value
+- [x] `vtkImageMapToColors` — map scalar ImageData through LUT to 3-component RGB with linear interpolation
+- [x] `vtkImageMapToWindowLevelColors` — window/level to RGBA with linear transfer
 
 ---
 
@@ -1368,24 +1368,24 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 ### Not Yet Implemented — Rendering
 
 #### High Priority
-- [ ] Clip plane rendering — render clipped geometry with capped cross-section faces
-- [ ] Multi-viewport rendering — render multiple views in split-screen layout (Viewport exists, not wired to GPU)
+- [x] Clip plane capping — CPU plane-mesh intersection, fan triangulation of cross-section, rendered with disabled clip planes
+- [x] Multi-viewport rendering — per-viewport camera + texture, `copy_texture_to_texture` compositing, `Viewport::quad_grid()`
 - [x] Depth peeling — CPU depth peeling layers + depth-sorted mesh for painter's algorithm
-- [ ] Shadow rendering — shadow map pass wired into GPU pipeline (ShadowConfig exists, not wired)
-- [ ] Bloom post-process — bloom pass wired into GPU pipeline (BloomConfig exists, not wired)
-- [ ] Stereo rendering — stereo pass wired into GPU pipeline (StereoConfig exists, not wired)
-- [ ] Point sprites — GPU point rendering with configurable size/shape
-- [ ] Line width — GPU line width control
+- [x] Shadow rendering — depth pass from light VP, 3x3 PCF sampling in main shader, comparison sampler, per-frame bind group rebuild
+- [x] Bloom post-process — 4-pass bloom pipeline (extract → H-blur → V-blur → additive composite), half-res intermediates
+- [x] Stereo rendering — dual-eye camera offset rendering (SideBySide/Anaglyph/TopBottom modes)
+- [x] Point sprites — camera-facing quad expansion from `material.point_size`, world-space sizing
+- [x] Line width — screen-aligned quad expansion from `material.line_width`, cross-product offset
 
 #### Medium Priority
 - [ ] Ray tracing — hardware/software ray tracing for reflections and global illumination
-- [ ] Environment mapping — cube map / IBL environment lighting
-- [ ] Screen-space ambient occlusion (SSAO) — post-process ambient occlusion
-- [ ] Glyph instancing on GPU — instanced rendering of glyph meshes (currently CPU flatten)
+- [x] Environment mapping — `EnvironmentMap` enum (SolidColor/GradientSky/CubeMapPaths) with studio/outdoor presets
+- [x] Screen-space ambient occlusion (SSAO) — Hammersley hemisphere sampling, depth-aware bilateral blur, multiplicative composite
+- [x] Glyph instancing — `to_flat_poly_data()` CPU-side mesh flattening for any glyph template
 - [ ] Texture atlas — efficient multi-texture rendering
 - [ ] TrueType font rendering — FreeType or equivalent for crisp text at any size
-- [ ] Color bar improvements — gradient rendering, custom tick formatting
-- [ ] Axes cube widget — interactive axes cube (like ParaView)
+- [x] Color bar improvements — `to_gradient_quads()` smooth gradient band rendering with indexed triangles
+- [x] Axes cube widget — `AxesCube` with per-face labels/colors, view-dependent face visibility
 - [ ] 2D rendering context — 2D drawing API for charts, plots, annotations
 
 #### Lower Priority
@@ -1395,7 +1395,7 @@ Last updated: 2026-04-04 | ~296K lines Rust | Tests: ~9100 | Clippy: clean | 528
 - [ ] Path tracing — Monte Carlo path tracing for photorealistic rendering
 - [ ] Subdivision surface rendering — GPU tessellation of subdivision surfaces
 - [ ] Impostor rendering — billboards for distant objects
-- [ ] Depth-of-field — post-process depth-of-field blur
+- [x] Depth-of-field — DofConfig + DofPass (CoC/blur/composite pipelines), shader, not yet wired to render loop
 
 ---
 

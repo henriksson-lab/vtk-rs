@@ -1,5 +1,7 @@
 //! points filters.
 
+pub mod connected_points;
+pub mod euclidean_cluster;
 pub mod icp;
 pub mod point_cloud_analysis;
 pub mod point_cloud_density;
@@ -18,3 +20,7 @@ pub mod sample_on_sphere;
 pub mod snap_to_grid;
 pub mod sph_interpolator;
 pub mod surface_sampling;
+pub mod voxel_grid;
+pub mod pca_curvature;
+pub mod densify_point_cloud;
+pub mod poisson_disk;

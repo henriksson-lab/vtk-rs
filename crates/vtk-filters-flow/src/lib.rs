@@ -10,3 +10,4 @@ pub mod stream_tracer;
 pub mod temporal_interpolator;
 pub mod temporal_stream_tracer;
 pub mod vector_field_topology;
+pub mod temporal_pathline;

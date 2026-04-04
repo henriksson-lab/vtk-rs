@@ -7,5 +7,10 @@ pub(crate) mod silhouette_pass;
 pub(crate) mod volume_pass;
 pub mod gpu_picker;
 pub(crate) mod skybox_pass;
+pub(crate) mod shadow_pass;
+pub(crate) mod bloom_pass;
+pub(crate) mod clip_cap;
+pub(crate) mod ssao_pass;
+pub(crate) mod dof_pass;
 
 pub use wgpu_renderer::WgpuRenderer;

@@ -13,3 +13,7 @@ pub mod transform;
 pub mod warp;
 pub mod warp_implicit;
 pub mod weighted_transform;
+pub mod fit_heightmap;
+pub mod volume_revolution;
+pub mod warp_lens;
+pub mod trimmed_extrusion;

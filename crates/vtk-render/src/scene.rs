@@ -1,6 +1,6 @@
 use vtk_data::PolyData;
 
-use crate::{Annotations, AxesWidget, BloomConfig, Camera, ClipPlane, ColorMap, Fog, Light, LodSet, Material, ScalarBar, ShadowConfig, SilhouetteConfig, Skybox, StereoConfig, Texture, VolumeActor};
+use crate::{Annotations, AxesWidget, BloomConfig, Camera, ClipPlane, ColorMap, DofConfig, Fog, Light, LodSet, Material, ScalarBar, ShadowConfig, SilhouetteConfig, Skybox, StereoConfig, Texture, Viewport, VolumeActor};
 
 /// How to render the surface.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -165,6 +165,14 @@ pub struct Scene {
     pub annotations: Annotations,
     /// Stereo rendering configuration.
     pub stereo: StereoConfig,
+    /// Screen-space ambient occlusion configuration.
+    pub ssao: crate::ssao::SsaoConfig,
+    /// Depth-of-field post-processing configuration.
+    pub dof: DofConfig,
+    /// Split-screen viewports with per-viewport cameras.
+    /// When non-empty, each entry is rendered in its viewport region.
+    /// When empty, the main `camera` renders full-screen.
+    pub viewports: Vec<(Viewport, Camera)>,
     pub camera: Camera,
     pub background: [f32; 4],
 }
@@ -185,6 +193,9 @@ impl Default for Scene {
             bloom: BloomConfig::default(),
             annotations: Annotations::default(),
             stereo: StereoConfig::default(),
+            ssao: crate::ssao::SsaoConfig::default(),
+            dof: DofConfig::default(),
+            viewports: Vec::new(),
             camera: Camera::default(),
             background: [0.1, 0.1, 0.1, 1.0],
         }

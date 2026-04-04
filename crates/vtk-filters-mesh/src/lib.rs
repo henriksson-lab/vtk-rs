@@ -802,3 +802,6 @@ pub mod weighted_smooth;
 pub mod weld_vertices;
 pub mod wire_ops;
 pub mod wireframe_extract;
+pub mod static_clean;
+pub mod boolean_operations;
+pub mod youngs_interface;
