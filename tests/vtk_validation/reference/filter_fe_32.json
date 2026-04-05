@@ -1,0 +1,18 @@
+{
+  "num_points": 1158,
+  "num_cells": 2312,
+  "bounds": [
+    8.0,
+    24.0,
+    8.0,
+    24.0,
+    8.0,
+    24.0
+  ],
+  "scalar_range": [
+    64.0,
+    64.0
+  ],
+  "isovalue": 64,
+  "resolution": 32
+}

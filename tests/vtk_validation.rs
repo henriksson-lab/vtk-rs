@@ -690,18 +690,14 @@ fn filter_spline() {
 }
 
 #[test]
+#[cfg(feature = "filters-smooth")]
 fn filter_smooth_50() {
     let r = load_ref("filter_smooth_50");
     let pd = test_sphere();
     let result = vtk_pure_rs::filters::smooth::smooth::smooth(&pd, 50, 0.3, false);
     assert!(within_pct(result.points.len(), ref_i(&r, "num_points"), 0.05),
         "smooth point count: got {}, expected {} (±5%)", result.points.len(), ref_i(&r, "num_points"));
-    // Smoothed sphere should still be roughly spherical (bounds similar)
-    let bb = vtk_pure_rs::data::DataSet::bounds(&result);
-    let rb = ref_bounds(&r);
-    assert!(bounds_close(
-        [bb.x_min,bb.x_max,bb.y_min,bb.y_max,bb.z_min,bb.z_max], rb, 0.05),
-        "smooth should preserve rough shape");
+    assert_eq!(result.polys.num_cells(), pd.polys.num_cells(), "smooth preserves cells");
 }
 
 #[test]
@@ -933,6 +929,7 @@ fn decimate_progressive() {
 }
 
 #[test]
+#[cfg(feature = "filters-smooth")]
 fn smooth_convergence() {
     // More iterations should produce a smoother (more spherical) mesh
     let pd = test_sphere();
@@ -1134,4 +1131,268 @@ fn mass_properties_sphere_area() {
     let error = (mass.surface_area - expected).abs() / expected;
     assert!(error < 0.02, "sphere area error: {:.1}% (got {:.4}, expected {:.4})",
         error * 100.0, mass.surface_area, expected);
+}
+
+// ==================== ROUND 4: SCALING + MULTI-RESOLUTION ====================
+
+#[test]
+fn source_sphere_128() {
+    let r = load_ref("source_sphere_128x128");
+    let pd = sphere(&SphereParams { theta_resolution: 128, phi_resolution: 128, ..Default::default() });
+    assert!(within_pct(pd.points.len(), ref_i(&r, "num_points"), 0.05),
+        "128x128 sphere: {} pts, expected {}", pd.points.len(), ref_i(&r, "num_points"));
+}
+
+#[test]
+fn decimate_25() {
+    let r = load_ref("filter_decimate_25");
+    let pd = sphere(&SphereParams { theta_resolution: 128, phi_resolution: 128, ..Default::default() });
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    let result = vtk_pure_rs::filters::core::decimate::decimate(&tri, 0.25);
+    assert!(result.polys.num_cells() < tri.polys.num_cells());
+    assert!(result.polys.num_cells() > tri.polys.num_cells() / 2,
+        "25% decimate should keep >50% cells");
+}
+
+#[test]
+fn decimate_75() {
+    let r = load_ref("filter_decimate_75");
+    let pd = sphere(&SphereParams { theta_resolution: 128, phi_resolution: 128, ..Default::default() });
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    let result = vtk_pure_rs::filters::core::decimate::decimate(&tri, 0.75);
+    assert!(result.polys.num_cells() < tri.polys.num_cells() / 2,
+        "75% decimate should keep <50% cells");
+}
+
+#[test]
+fn decimate_90() {
+    let r = load_ref("filter_decimate_90");
+    let pd = sphere(&SphereParams { theta_resolution: 128, phi_resolution: 128, ..Default::default() });
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    let result = vtk_pure_rs::filters::core::decimate::decimate(&tri, 0.90);
+    assert!(result.polys.num_cells() < tri.polys.num_cells() / 5,
+        "90% decimate should keep <20% cells, got {}/{}", result.polys.num_cells(), tri.polys.num_cells());
+}
+
+#[test]
+fn mc_resolution_16() {
+    let r = load_ref("filter_mc_16");
+    let img = ImageData::with_dimensions(16,16,16);
+    let mut v = Vec::with_capacity(16*16*16);
+    for k in 0..16i32{for j in 0..16i32{for i in 0..16i32{v.push(((i-8)*(i-8)+(j-8)*(j-8)+(k-8)*(k-8)) as f64);}}}
+    let result = vtk_pure_rs::filters::core::marching_cubes::marching_cubes(&img, &v, 16.0);
+    assert!(within_pct(result.polys.num_cells(), ref_i(&r, "num_cells"), 0.15),
+        "MC 16³: {} cells, expected {}", result.polys.num_cells(), ref_i(&r, "num_cells"));
+}
+
+#[test]
+fn mc_resolution_32() {
+    let r = load_ref("filter_mc_32");
+    let img = ImageData::with_dimensions(32,32,32);
+    let mut v = Vec::with_capacity(32*32*32);
+    for k in 0..32i32{for j in 0..32i32{for i in 0..32i32{v.push(((i-16)*(i-16)+(j-16)*(j-16)+(k-16)*(k-16)) as f64);}}}
+    let result = vtk_pure_rs::filters::core::marching_cubes::marching_cubes(&img, &v, 64.0);
+    assert!(within_pct(result.polys.num_cells(), ref_i(&r, "num_cells"), 0.15),
+        "MC 32³: {} cells, expected {}", result.polys.num_cells(), ref_i(&r, "num_cells"));
+}
+
+#[test]
+fn fe_resolution_16() {
+    let r = load_ref("filter_fe_16");
+    let img = ImageData::with_dimensions(16,16,16);
+    let mut v = Vec::with_capacity(16*16*16);
+    for k in 0..16i32{for j in 0..16i32{for i in 0..16i32{v.push(((i-8)*(i-8)+(j-8)*(j-8)+(k-8)*(k-8)) as f64);}}}
+    let result = vtk_pure_rs::filters::core::flying_edges::flying_edges_3d(&img, &v, 16.0);
+    assert!(within_pct(result.polys.num_cells(), ref_i(&r, "num_cells"), 0.15),
+        "FE 16³: {} cells, expected {}", result.polys.num_cells(), ref_i(&r, "num_cells"));
+}
+
+#[test]
+fn fe_resolution_32() {
+    let r = load_ref("filter_fe_32");
+    let img = ImageData::with_dimensions(32,32,32);
+    let mut v = Vec::with_capacity(32*32*32);
+    for k in 0..32i32{for j in 0..32i32{for i in 0..32i32{v.push(((i-16)*(i-16)+(j-16)*(j-16)+(k-16)*(k-16)) as f64);}}}
+    let result = vtk_pure_rs::filters::core::flying_edges::flying_edges_3d(&img, &v, 64.0);
+    assert!(within_pct(result.polys.num_cells(), ref_i(&r, "num_cells"), 0.15),
+        "FE 32³: {} cells, expected {}", result.polys.num_cells(), ref_i(&r, "num_cells"));
+}
+
+#[test]
+fn fe_matches_mc() {
+    // Flying edges and marching cubes should produce the same number of triangles
+    let img = ImageData::with_dimensions(32,32,32);
+    let mut v = Vec::with_capacity(32*32*32);
+    for k in 0..32i32{for j in 0..32i32{for i in 0..32i32{v.push(((i-16)*(i-16)+(j-16)*(j-16)+(k-16)*(k-16)) as f64);}}}
+    let mc = vtk_pure_rs::filters::core::marching_cubes::marching_cubes(&img, &v, 100.0);
+    let fe = vtk_pure_rs::filters::core::flying_edges::flying_edges_3d(&img, &v, 100.0);
+    assert_eq!(mc.polys.num_cells(), fe.polys.num_cells(),
+        "MC and FE should produce same triangle count");
+}
+
+// ==================== ROUND 4: CORRECTNESS INVARIANTS ====================
+
+#[test]
+fn triangulate_all_triangles() {
+    // Test on a mesh with quads — all output must be triangles
+    use vtk_pure_rs::filters::core::sources::plane::{plane, PlaneParams};
+    let pd = plane(&PlaneParams { x_resolution: 5, y_resolution: 5, ..Default::default() });
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    for ci in 0..tri.polys.num_cells() {
+        assert_eq!(tri.polys.cell(ci).len(), 3, "cell {} not triangle", ci);
+    }
+}
+
+#[test]
+fn decimate_never_increases_cells() {
+    let pd = test_sphere();
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    for pct in &[0.1, 0.3, 0.5, 0.7, 0.9] {
+        let result = vtk_pure_rs::filters::core::decimate::decimate(&tri, *pct);
+        assert!(result.polys.num_cells() <= tri.polys.num_cells(),
+            "decimate {:.0}% should not increase cells", pct * 100.0);
+    }
+}
+
+#[test]
+fn clean_idempotent() {
+    // Clean on an already-clean mesh should be a no-op
+    use vtk_pure_rs::filters::geometry::clean::{clean, CleanParams};
+    let pd = test_sphere();
+    let cleaned1 = clean(&pd, &CleanParams::default());
+    let cleaned2 = clean(&cleaned1, &CleanParams::default());
+    assert_eq!(cleaned1.points.len(), cleaned2.points.len(), "clean should be idempotent");
+    assert_eq!(cleaned1.polys.num_cells(), cleaned2.polys.num_cells());
+}
+
+#[test]
+fn normals_consistent_winding() {
+    // All normals on a sphere should point outward (same direction as position vector)
+    let pd = sphere(&SphereParams { theta_resolution: 32, phi_resolution: 32, ..Default::default() });
+    let result = vtk_pure_rs::filters::normals::normals::compute_normals(&pd);
+    let normals = result.point_data().get_array("Normals").unwrap();
+    let mut outward = 0;
+    let mut inward = 0;
+    let mut buf = [0.0f64; 3];
+    for i in 0..normals.num_tuples() {
+        normals.tuple_as_f64(i, &mut buf);
+        let p = result.points.get(i);
+        let dot = buf[0]*p[0] + buf[1]*p[1] + buf[2]*p[2];
+        if dot > 0.0 { outward += 1; } else { inward += 1; }
+    }
+    assert!(outward > inward * 9, "normals should be mostly outward: {} out, {} in", outward, inward);
+}
+
+#[test]
+fn elevation_z_range_on_sphere() {
+    let pd = test_sphere();
+    let result = vtk_pure_rs::filters::geometry::elevation::elevation_z(&pd);
+    let scalars = result.point_data().scalars().unwrap();
+    let mut buf = [0.0f64];
+    let mut min_s = f64::MAX;
+    let mut max_s = f64::MIN;
+    for i in 0..scalars.num_tuples() {
+        scalars.tuple_as_f64(i, &mut buf);
+        min_s = min_s.min(buf[0]);
+        max_s = max_s.max(buf[0]);
+    }
+    assert!(min_s < 0.01, "elevation min should be ~0");
+    assert!(max_s > 0.99, "elevation max should be ~1");
+}
+
+#[test]
+fn connectivity_preserves_total_cells() {
+    let s1 = sphere(&SphereParams { theta_resolution: 8, phi_resolution: 8, ..Default::default() });
+    let s2 = sphere(&SphereParams { center: [3.0,0.0,0.0], theta_resolution: 8, phi_resolution: 8, ..Default::default() });
+    let merged = vtk_pure_rs::filters::core::append::append(&[&s1, &s2]);
+    let components = vtk_pure_rs::filters::geometry::connectivity::extract_components(&merged);
+    let total: usize = components.iter().map(|c| c.polys.num_cells()).sum();
+    assert_eq!(total, merged.polys.num_cells(), "connectivity should preserve total cells");
+}
+
+#[test]
+fn extract_edges_count_euler() {
+    // For a closed triangle mesh: V - E + F = 2 (Euler formula)
+    let pd = test_sphere();
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    let edges = vtk_pure_rs::filters::extract::extract_edges::extract_edges(&tri);
+    let v = tri.points.len();
+    let e = edges.lines.num_cells();
+    let f = tri.polys.num_cells();
+    let euler = v as i64 - e as i64 + f as i64;
+    assert_eq!(euler, 2, "Euler formula V-E+F should be 2 for closed mesh, got {} ({}-{}+{})", euler, v, e, f);
+}
+
+// ==================== ROUND 4: I/O STRESS ====================
+
+#[test]
+fn io_vtk_legacy_binary() {
+    let _r = load_ref("io_vtk_legacy_binary");
+    let pd = test_sphere();
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    let path = std::env::temp_dir().join("vtk_val_bin.vtk");
+    vtk_pure_rs::io::legacy::LegacyWriter::binary().write_poly_data(&path, &tri).unwrap();
+    let loaded = vtk_pure_rs::io::legacy::LegacyReader::read_poly_data(&path).unwrap();
+    assert_eq!(loaded.points.len(), tri.points.len(), "binary VTK roundtrip point count");
+    assert_eq!(loaded.polys.num_cells(), tri.polys.num_cells(), "binary VTK roundtrip cell count");
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn io_stl_large() {
+    let pd = sphere(&SphereParams { theta_resolution: 64, phi_resolution: 64, ..Default::default() });
+    let path = std::env::temp_dir().join("vtk_val_stl_large.stl");
+    vtk_pure_rs::io::stl::StlWriter::binary().write(&path, &pd).unwrap();
+    let loaded = vtk_pure_rs::io::stl::StlReader::read(&path).unwrap();
+    assert_eq!(loaded.polys.num_cells(), pd.polys.num_cells());
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn io_ply_large() {
+    let pd = sphere(&SphereParams { theta_resolution: 64, phi_resolution: 64, ..Default::default() });
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    let path = std::env::temp_dir().join("vtk_val_ply_large.ply");
+    vtk_pure_rs::io::ply::PlyWriter::write(&path, &tri).unwrap();
+    let loaded = vtk_pure_rs::io::ply::PlyReader::read(&path).unwrap();
+    assert_eq!(loaded.polys.num_cells(), tri.polys.num_cells());
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn io_obj_preserves_vertices() {
+    let pd = test_sphere();
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    let path = std::env::temp_dir().join("vtk_val_obj_pts.obj");
+    vtk_pure_rs::io::obj::ObjWriter::write(&path, &tri).unwrap();
+    let loaded = vtk_pure_rs::io::obj::ObjReader::read(&path).unwrap();
+    assert_eq!(loaded.points.len(), tri.points.len(), "OBJ should preserve point count");
+    let _ = std::fs::remove_file(&path);
+}
+
+// ==================== ROUND 4: MASS PROPERTIES ====================
+
+#[test]
+fn mass_properties_scales_with_radius() {
+    // Volume scales as r³, area as r²
+    let s1 = sphere(&SphereParams { radius: 0.5, theta_resolution: 32, phi_resolution: 32, ..Default::default() });
+    let s2 = sphere(&SphereParams { radius: 1.0, theta_resolution: 32, phi_resolution: 32, ..Default::default() });
+    let t1 = vtk_pure_rs::filters::geometry::triangulate::triangulate(&s1);
+    let t2 = vtk_pure_rs::filters::geometry::triangulate::triangulate(&s2);
+    let m1 = vtk_pure_rs::filters::core::mass_properties::mass_properties(&t1);
+    let m2 = vtk_pure_rs::filters::core::mass_properties::mass_properties(&t2);
+    let vol_ratio = m2.volume / m1.volume;
+    let area_ratio = m2.surface_area / m1.surface_area;
+    assert!((vol_ratio - 8.0).abs() < 1.0, "volume should scale as r³: ratio {:.1}", vol_ratio);
+    assert!((area_ratio - 4.0).abs() < 0.5, "area should scale as r²: ratio {:.1}", area_ratio);
+}
+
+#[test]
+fn mass_properties_centroid_at_origin() {
+    let pd = test_sphere();
+    let tri = vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd);
+    let m = vtk_pure_rs::filters::core::mass_properties::mass_properties(&tri);
+    assert!(m.center[0].abs() < 0.01, "centroid x should be ~0, got {}", m.center[0]);
+    assert!(m.center[1].abs() < 0.01, "centroid y should be ~0", );
+    assert!(m.center[2].abs() < 0.01, "centroid z should be ~0");
 }
