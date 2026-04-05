@@ -7,5 +7,12 @@ description = "Convenience crate that re-exports all vtk-rs modules"
 [dependencies]
 vtk-types = { workspace = true }
 vtk-data = { workspace = true }
-vtk-filters = { workspace = true }
+vtk-filters = { workspace = true, features = ["all"] }
 vtk-render = { workspace = true }
+vtk-io-legacy = { workspace = true }
+vtk-io-stl = { workspace = true }
+vtk-io-obj = { workspace = true }
+vtk-io-xml = { workspace = true }
+vtk-io-ply = { workspace = true }
+vtk-io-gltf = { workspace = true }
+vtk-io-off = { workspace = true }

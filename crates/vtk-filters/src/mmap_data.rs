@@ -36,20 +36,15 @@ pub fn estimate_file_info(path: &Path) -> Option<MmapInfo> {
     })
 }
 
-/// Read a large point cloud in chunks, processing each chunk.
+/// Process a PolyData in chunks of `chunk_size` points.
 ///
-/// Reads the file in blocks of `chunk_size` points, calling `process`
-/// for each chunk. Returns the number of chunks processed.
-pub fn read_points_chunked<F>(
-    path: &Path,
+/// Calls `process` for each chunk. Returns the number of chunks.
+pub fn process_points_chunked<F>(
+    mesh: &PolyData,
     chunk_size: usize,
     mut process: F,
-) -> Result<usize, String>
+) -> usize
 where F: FnMut(usize, &PolyData) {
-    // Read the whole file (actual mmap would use unsafe)
-    let mesh = crate::io_utils::read_poly_data(path)
-        .map_err(|e| format!("{e}"))?;
-
     let n = mesh.points.len();
     let mut chunk_count = 0;
 
@@ -63,20 +58,14 @@ where F: FnMut(usize, &PolyData) {
         chunk_count += 1;
     }
 
-    Ok(chunk_count)
+    chunk_count
 }
 
-/// Write a large PolyData in chunks to avoid memory spikes.
-pub fn write_points_chunked(
-    points: &[PolyData],
-    path: &Path,
-) -> Result<(), String> {
-    // Merge all chunks then write
+/// Merge multiple PolyData chunks into one.
+pub fn merge_chunks(points: &[PolyData]) -> PolyData {
     let refs: Vec<&PolyData> = points.iter().collect();
-    if refs.is_empty() { return Ok(()); }
-    let merged = crate::append::append(&refs);
-    crate::io_utils::write_poly_data(path, &merged)
-        .map_err(|e| format!("{e}"))
+    if refs.is_empty() { return PolyData::new(); }
+    crate::append::append(&refs)
 }
 
 /// Report memory usage estimate for a PolyData.

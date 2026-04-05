@@ -25,7 +25,7 @@ fn main() {
     }
 
     let path = std::path::Path::new(&args[1]);
-    match vtk_filters::io_utils::read_poly_data(path) {
+    match vtk::io::read_poly_data(path) {
         Ok(pd) => {
             println!("File: {}", path.display());
             println!();

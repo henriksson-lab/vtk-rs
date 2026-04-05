@@ -113,13 +113,14 @@ autobenches = false
 
 [dependencies]
 vtk-data = { workspace = true }
-vtk-filters = { workspace = true }
+vtk-filters = { workspace = true, features = ["all"] }
 vtk-io-legacy = { workspace = true }
 vtk-io-stl = { workspace = true }
 vtk-io-obj = { workspace = true }
 vtk-io-xml = { workspace = true }
 vtk-io-ply = { workspace = true }
 vtk-io-gltf = { workspace = true }
+vtk = { path = "crates/vtk" }
 vtk-render = { workspace = true }
 vtk-render-wgpu = { workspace = true }
 winit = { workspace = true }

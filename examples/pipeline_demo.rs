@@ -68,7 +68,7 @@ fn main() {
     println!("\nWriting to:");
     for ext in &formats {
         let path = dir.join(format!("sphere.{ext}"));
-        match vtk_filters::io_utils::write_poly_data(&path, result) {
+        match vtk::io::write_poly_data(&path, result) {
             Ok(()) => println!("  {} ✓", path.display()),
             Err(e) => println!("  {} ✗ {e}", path.display()),
         }
@@ -76,7 +76,7 @@ fn main() {
 
     // 7. Verify roundtrip
     let vtk_path = dir.join("sphere.vtk");
-    match vtk_filters::io_utils::read_poly_data(&vtk_path) {
+    match vtk::io::read_poly_data(&vtk_path) {
         Ok(loaded) => {
             println!("\nRoundtrip verification:");
             println!("  Original: {} points", result.points.len());

@@ -28,8 +28,9 @@ pub use vtk_filters::quick;
 /// ```no_run
 /// vtk::io::write_poly_data(std::path::Path::new("mesh.stl"), &vtk::quick::sphere()).unwrap();
 /// ```
+mod io_utils;
 pub mod io {
-    pub use vtk_filters::io_utils::*;
+    pub use crate::io_utils::*;
 }
 
 /// Math utilities: vectors, interpolation, noise, coordinate transforms.
