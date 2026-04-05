@@ -1,0 +1,14 @@
+{
+  "num_points": 121,
+  "num_cells": 100,
+  "bounds": [
+    -0.5,
+    0.5,
+    -0.5,
+    0.5,
+    0.0,
+    0.0
+  ],
+  "has_normals": true,
+  "num_normal_tuples": 121
+}

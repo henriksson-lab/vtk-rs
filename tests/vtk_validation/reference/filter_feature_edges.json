@@ -1,0 +1,15 @@
+{
+  "num_points": 0,
+  "num_cells": 0,
+  "bounds": [
+    1e+299,
+    -1e+299,
+    1e+299,
+    -1e+299,
+    1e+299,
+    -1e+299
+  ],
+  "has_normals": true,
+  "num_normal_tuples": 0,
+  "boundary_edges": 0
+}

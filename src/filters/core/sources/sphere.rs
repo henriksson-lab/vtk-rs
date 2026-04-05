@@ -68,19 +68,19 @@ pub fn sphere(params: &SphereParams) -> PolyData {
         polys.push_cell(&[0, (1 + i) as i64, (1 + next) as i64]);
     }
 
-    // Body quads (ring to ring)
+    // Body triangles (ring to ring, 2 triangles per quad)
     for j in 0..n_phi - 2 {
         let ring_start = 1 + j * n_theta;
         let next_ring_start = 1 + (j + 1) * n_theta;
 
         for i in 0..n_theta {
             let next = (i + 1) % n_theta;
-            polys.push_cell(&[
-                (ring_start + i) as i64,
-                (next_ring_start + i) as i64,
-                (next_ring_start + next) as i64,
-                (ring_start + next) as i64,
-            ]);
+            let a = (ring_start + i) as i64;
+            let b = (next_ring_start + i) as i64;
+            let c = (next_ring_start + next) as i64;
+            let d = (ring_start + next) as i64;
+            polys.push_cell(&[a, b, c]);
+            polys.push_cell(&[a, c, d]);
         }
     }
 

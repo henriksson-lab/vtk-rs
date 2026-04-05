@@ -29,6 +29,14 @@ impl<T: Scalar> Points<T> {
         }
     }
 
+    /// Create from a pre-flattened Vec (x0,y0,z0,x1,y1,z1,...). Zero-copy.
+    pub fn from_flat_vec(flat: Vec<T>) -> Self {
+        debug_assert!(flat.len() % 3 == 0, "flat vec length must be divisible by 3");
+        Self {
+            data: DataArray::from_vec("Points", flat, 3),
+        }
+    }
+
     pub fn push(&mut self, point: [T; 3]) {
         self.data.push_tuple(&point);
     }

@@ -1,0 +1,20 @@
+{
+  "num_points": 100,
+  "num_cells": 192,
+  "bounds": [
+    -0.48746395111083984,
+    3.48746395111084,
+    -0.48746395111083984,
+    0.48746395111083984,
+    -0.5,
+    0.5
+  ],
+  "has_normals": true,
+  "num_normal_tuples": 100,
+  "scalar_range": [
+    0.0,
+    1.0
+  ],
+  "scalar_name": "RegionId",
+  "num_regions": 2
+}

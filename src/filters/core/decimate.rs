@@ -1,14 +1,12 @@
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashSet};
 use std::cmp::Ordering;
 
 use crate::data::{CellArray, Points, PolyData};
 
-/// Simplify a triangle mesh by collapsing edges using a quadric error metric.
+/// Simplify a triangle mesh using quadric error metric edge collapse.
 ///
 /// `target_reduction` is the fraction of triangles to remove (0.0 = none, 1.0 = all).
-/// The algorithm greedily collapses the lowest-error edge until the target is reached.
-///
-/// Input must be a triangle mesh (run `triangulate` first if needed).
+/// Uses adjacency structures for O(1) neighbor lookups per collapse.
 pub fn decimate(input: &PolyData, target_reduction: f64) -> PolyData {
     let target_reduction = target_reduction.clamp(0.0, 0.99);
     let n_points = input.points.len();
@@ -24,99 +22,117 @@ pub fn decimate(input: &PolyData, target_reduction: f64) -> PolyData {
     // Copy points
     let mut points: Vec<[f64; 3]> = (0..n_points).map(|i| input.points.get(i)).collect();
 
-    // Copy triangles as mutable Vec<[usize; 3]>
-    let mut triangles: Vec<Option<[usize; 3]>> = Vec::with_capacity(n_cells);
+    // Build triangle list
+    let mut triangles: Vec<[usize; 3]> = Vec::with_capacity(n_cells);
     for cell in input.polys.iter() {
         if cell.len() == 3 {
-            triangles.push(Some([cell[0] as usize, cell[1] as usize, cell[2] as usize]));
+            triangles.push([cell[0] as usize, cell[1] as usize, cell[2] as usize]);
+        }
+    }
+    let mut tri_alive = vec![true; triangles.len()];
+
+    // Adjacency: vertex → set of triangle indices
+    let mut vert_tris: Vec<HashSet<usize>> = vec![HashSet::new(); n_points];
+    for (ti, tri) in triangles.iter().enumerate() {
+        for &v in tri {
+            vert_tris[v].insert(ti);
         }
     }
 
-    // Compute quadric matrices per vertex
-    let mut quadrics = vec![[0.0f64; 10]; points.len()]; // symmetric 4x4 stored as 10 values
-    for &[v0, v1, v2] in triangles.iter().flatten() {
-        let q = triangle_quadric(points[v0], points[v1], points[v2]);
-        add_quadric(&mut quadrics[v0], &q);
-        add_quadric(&mut quadrics[v1], &q);
-        add_quadric(&mut quadrics[v2], &q);
+    // Compute quadric matrices per vertex (symmetric 4x4 as 10 values)
+    let mut quadrics = vec![[0.0f64; 10]; n_points];
+    for tri in &triangles {
+        let q = triangle_quadric(points[tri[0]], points[tri[1]], points[tri[2]]);
+        for &v in tri {
+            add_quadric(&mut quadrics[v], &q);
+        }
     }
 
-    // Build edge set and priority queue
+    // Edge priority queue
     let mut heap: BinaryHeap<EdgeCollapse> = BinaryHeap::new();
-    let mut point_alive = vec![true; points.len()];
-    // Union-find for collapsed points
-    let mut parent: Vec<usize> = (0..points.len()).collect();
+    let mut edges_seen = HashSet::new();
+    let mut version = vec![0u32; n_points]; // invalidation counter per vertex
 
-    // Collect edges from triangles
-    let mut edges_seen = std::collections::HashSet::new();
-    for &[v0, v1, v2] in triangles.iter().flatten() {
-        for &(a, b) in &[(v0, v1), (v1, v2), (v2, v0)] {
+    for tri in &triangles {
+        for &(a, b) in &[(tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0])] {
             let edge = if a < b { (a, b) } else { (b, a) };
             if edges_seen.insert(edge) {
-                let cost = edge_collapse_cost(&quadrics[edge.0], &quadrics[edge.1], points[edge.0], points[edge.1]);
-                heap.push(EdgeCollapse { cost: -cost, v0: edge.0, v1: edge.1 });
+                let cost = edge_cost(&quadrics[a], &quadrics[b], points[a], points[b]);
+                heap.push(EdgeCollapse {
+                    cost: -cost, v0: edge.0, v1: edge.1,
+                    ver0: version[edge.0], ver1: version[edge.1],
+                });
             }
         }
     }
 
-    let mut live_triangles = triangles.iter().filter(|t| t.is_some()).count();
+    let mut live_count = triangles.len();
 
-    // Greedily collapse edges
-    while live_triangles > target_cells {
-        let Some(collapse) = heap.pop() else {
-            break;
-        };
+    // Greedy collapse loop
+    while live_count > target_cells {
+        let Some(collapse) = heap.pop() else { break };
 
-        let a = find(&parent, collapse.v0);
-        let b = find(&parent, collapse.v1);
+        let (a, b) = (collapse.v0, collapse.v1);
 
-        if a == b || !point_alive[a] || !point_alive[b] {
+        // Skip stale entries (vertex was already modified)
+        if collapse.ver0 != version[a] || collapse.ver1 != version[b] {
             continue;
         }
 
-        // Merge b into a
-        let new_pos = midpoint(points[a], points[b]);
-        points[a] = new_pos;
-        let mut merged_q = quadrics[a];
-        add_quadric(&mut merged_q, &quadrics[b]);
-        quadrics[a] = merged_q;
+        // Merge b into a: update position and quadric
+        points[a] = midpoint(points[a], points[b]);
+        let qb = quadrics[b];
+        add_quadric(&mut quadrics[a], &qb);
+        version[a] += 1;
+        version[b] += 1;
 
-        parent[b] = a;
-        point_alive[b] = false;
+        // Collect triangles touching b
+        let b_tris: Vec<usize> = vert_tris[b].iter().copied().collect();
 
-        // Update triangles: replace b with a, remove degenerate
-        for tri in &mut triangles {
-            if let Some(t) = tri {
-                for v in t.iter_mut() {
-                    if find(&parent, *v) == b || *v == b {
-                        *v = a;
-                    } else {
-                        *v = find(&parent, *v);
-                    }
+        for &ti in &b_tris {
+            if !tri_alive[ti] { continue; }
+            let tri = &mut triangles[ti];
+
+            // Replace b with a in this triangle
+            for v in tri.iter_mut() {
+                if *v == b { *v = a; }
+            }
+
+            // Check degenerate (two vertices the same)
+            if tri[0] == tri[1] || tri[1] == tri[2] || tri[0] == tri[2] {
+                tri_alive[ti] = false;
+                live_count -= 1;
+                // Remove from adjacency
+                for &v in triangles[ti].iter() {
+                    vert_tris[v].remove(&ti);
                 }
-                // Degenerate check
-                if t[0] == t[1] || t[1] == t[2] || t[0] == t[2] {
-                    *tri = None;
-                    live_triangles -= 1;
+            } else {
+                // Move triangle from b's adjacency to a's
+                vert_tris[b].remove(&ti);
+                vert_tris[a].insert(ti);
+            }
+        }
+
+        // Re-insert edges touching a with fresh costs
+        let mut new_edges = HashSet::new();
+        for &ti in &vert_tris[a] {
+            if !tri_alive[ti] { continue; }
+            let tri = triangles[ti];
+            for &v in &tri {
+                if v != a {
+                    let edge = if a < v { (a, v) } else { (v, a) };
+                    if new_edges.insert(edge) {
+                        let cost = edge_cost(&quadrics[a], &quadrics[v], points[a], points[v]);
+                        heap.push(EdgeCollapse {
+                            cost: -cost, v0: edge.0, v1: edge.1,
+                            ver0: version[edge.0], ver1: version[edge.1],
+                        });
+                    }
                 }
             }
         }
 
-        if live_triangles <= target_cells {
-            break;
-        }
-
-        // Re-insert edges from remaining triangles touching a
-        for &[v0, v1, v2] in triangles.iter().flatten() {
-            if v0 == a || v1 == a || v2 == a {
-                for &(x, y) in &[(v0, v1), (v1, v2), (v2, v0)] {
-                    if x != y {
-                        let cost = edge_collapse_cost(&quadrics[x], &quadrics[y], points[x], points[y]);
-                        heap.push(EdgeCollapse { cost: -cost, v0: x, v1: y });
-                    }
-                }
-            }
-        }
+        if live_count <= target_cells { break; }
     }
 
     // Build output: compact points and triangles
@@ -124,17 +140,18 @@ pub fn decimate(input: &PolyData, target_reduction: f64) -> PolyData {
     let mut out_points = Points::<f64>::new();
     let mut out_polys = CellArray::new();
 
-    for &[v0, v1, v2] in triangles.iter().flatten() {
-        for &v in &[v0, v1, v2] {
+    for (ti, tri) in triangles.iter().enumerate() {
+        if !tri_alive[ti] { continue; }
+        for &v in tri {
             if point_map[v] == usize::MAX {
                 point_map[v] = out_points.len();
                 out_points.push(points[v]);
             }
         }
         out_polys.push_cell(&[
-            point_map[v0] as i64,
-            point_map[v1] as i64,
-            point_map[v2] as i64,
+            point_map[tri[0]] as i64,
+            point_map[tri[1]] as i64,
+            point_map[tri[2]] as i64,
         ]);
     }
 
@@ -144,30 +161,21 @@ pub fn decimate(input: &PolyData, target_reduction: f64) -> PolyData {
     output
 }
 
-fn find(parent: &[usize], mut x: usize) -> usize {
-    while parent[x] != x {
-        x = parent[x];
-    }
-    x
-}
-
 #[derive(Debug)]
 struct EdgeCollapse {
-    cost: f64, // negated for max-heap → min behavior
+    cost: f64,
     v0: usize,
     v1: usize,
+    ver0: u32,
+    ver1: u32,
 }
 
 impl PartialEq for EdgeCollapse {
-    fn eq(&self, other: &Self) -> bool {
-        self.cost == other.cost
-    }
+    fn eq(&self, other: &Self) -> bool { self.cost == other.cost }
 }
 impl Eq for EdgeCollapse {}
 impl PartialOrd for EdgeCollapse {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 impl Ord for EdgeCollapse {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -175,58 +183,29 @@ impl Ord for EdgeCollapse {
     }
 }
 
-/// Compute the plane equation coefficients for a triangle and return its quadric.
-/// Quadric is stored as 10 values for the symmetric 4x4 matrix.
 fn triangle_quadric(p0: [f64; 3], p1: [f64; 3], p2: [f64; 3]) -> [f64; 10] {
-    let e1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
-    let e2 = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
-    let n = [
-        e1[1] * e2[2] - e1[2] * e2[1],
-        e1[2] * e2[0] - e1[0] * e2[2],
-        e1[0] * e2[1] - e1[1] * e2[0],
-    ];
-    let len = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
-    if len < 1e-10 {
-        return [0.0; 10];
-    }
-    let a = n[0] / len;
-    let b = n[1] / len;
-    let c = n[2] / len;
-    let d = -(a * p0[0] + b * p0[1] + c * p0[2]);
-
-    // Q = [a,b,c,d]^T * [a,b,c,d] (outer product), stored as symmetric:
-    // [a*a, a*b, a*c, a*d, b*b, b*c, b*d, c*c, c*d, d*d]
+    let e1 = [p1[0]-p0[0], p1[1]-p0[1], p1[2]-p0[2]];
+    let e2 = [p2[0]-p0[0], p2[1]-p0[1], p2[2]-p0[2]];
+    let n = [e1[1]*e2[2]-e1[2]*e2[1], e1[2]*e2[0]-e1[0]*e2[2], e1[0]*e2[1]-e1[1]*e2[0]];
+    let len = (n[0]*n[0] + n[1]*n[1] + n[2]*n[2]).sqrt();
+    if len < 1e-10 { return [0.0; 10]; }
+    let (a, b, c) = (n[0]/len, n[1]/len, n[2]/len);
+    let d = -(a*p0[0] + b*p0[1] + c*p0[2]);
     [a*a, a*b, a*c, a*d, b*b, b*c, b*d, c*c, c*d, d*d]
 }
 
 fn add_quadric(a: &mut [f64; 10], b: &[f64; 10]) {
-    for i in 0..10 {
-        a[i] += b[i];
-    }
+    for i in 0..10 { a[i] += b[i]; }
 }
 
-fn edge_collapse_cost(q0: &[f64; 10], q1: &[f64; 10], p0: [f64; 3], p1: [f64; 3]) -> f64 {
-    // Combined quadric
-    let mut q = [0.0f64; 10];
-    for i in 0..10 {
-        q[i] = q0[i] + q1[i];
-    }
-    // Evaluate at midpoint
+fn edge_cost(q0: &[f64; 10], q1: &[f64; 10], p0: [f64; 3], p1: [f64; 3]) -> f64 {
+    let mut q = [0.0; 10];
+    for i in 0..10 { q[i] = q0[i] + q1[i]; }
     let mp = midpoint(p0, p1);
-    evaluate_quadric(&q, mp)
-}
-
-fn evaluate_quadric(q: &[f64; 10], p: [f64; 3]) -> f64 {
-    // Q stored as [a*a, a*b, a*c, a*d, b*b, b*c, b*d, c*c, c*d, d*d]
-    // v = [x, y, z, 1]
-    // error = v^T Q v
-    let x = p[0];
-    let y = p[1];
-    let z = p[2];
+    let (x, y, z) = (mp[0], mp[1], mp[2]);
     q[0]*x*x + 2.0*q[1]*x*y + 2.0*q[2]*x*z + 2.0*q[3]*x
     + q[4]*y*y + 2.0*q[5]*y*z + 2.0*q[6]*y
-    + q[7]*z*z + 2.0*q[8]*z
-    + q[9]
+    + q[7]*z*z + 2.0*q[8]*z + q[9]
 }
 
 fn midpoint(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
@@ -241,32 +220,21 @@ mod tests {
     #[test]
     fn decimate_sphere() {
         let sphere = sources::sphere::sphere(&sources::sphere::SphereParams {
-            theta_resolution: 16,
-            phi_resolution: 16,
-            ..Default::default()
+            theta_resolution: 16, phi_resolution: 16, ..Default::default()
         });
-        // Triangulate first (sphere has quads)
-        let tri = crate::filters::core::triangulate::triangulate(&sphere);
-        let original_cells = tri.polys.num_cells();
-
+        let tri = crate::filters::geometry::triangulate::triangulate(&sphere);
+        let original = tri.polys.num_cells();
         let decimated = decimate(&tri, 0.5);
-
-        assert!(
-            decimated.polys.num_cells() < original_cells,
-            "should have fewer cells: {} vs {}",
-            decimated.polys.num_cells(),
-            original_cells
-        );
+        assert!(decimated.polys.num_cells() < original);
         assert!(decimated.polys.num_cells() > 0);
     }
 
     #[test]
-    fn decimate_zero_reduction() {
+    fn decimate_zero() {
         let pd = PolyData::from_triangles(
-            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            vec![[0.0,0.0,0.0],[1.0,0.0,0.0],[0.0,1.0,0.0]],
             vec![[0, 1, 2]],
         );
-        let result = decimate(&pd, 0.0);
-        assert_eq!(result.polys.num_cells(), 1);
+        assert_eq!(decimate(&pd, 0.0).polys.num_cells(), 1);
     }
 }

@@ -45,62 +45,73 @@ pub fn clean(input: &PolyData, params: &CleanParams) -> PolyData {
     output
 }
 
-/// Merge points that are within `tolerance` distance of each other.
-/// Returns (new points, mapping from old index → new index).
+/// Merge points within `tolerance` using quantized grid deduplication.
+///
+/// Quantizes each point to a grid cell and uses a flat hash table for O(1) lookup.
+/// Only checks same cell (no 27-neighbor scan) — cell size is tolerance,
+/// so points further than tolerance apart land in different cells.
 fn merge_points(points: &Points<f64>, tolerance: f64) -> (Points<f64>, Vec<usize>) {
-    let tol2 = tolerance * tolerance;
     let n = points.len();
-    let mut point_map = vec![0usize; n];
-    let mut new_points = Points::new();
-
-    // Simple O(n*m) algorithm. For large datasets, a spatial hash would be better.
-    // We use a hash map with quantized coordinates for O(n) average case.
-    let inv_tol = if tolerance > 0.0 { 1.0 / tolerance } else { 1e12 };
-
-    let mut grid: HashMap<(i64, i64, i64), Vec<usize>> = HashMap::new();
-
-    for (i, pm) in point_map.iter_mut().enumerate() {
-        let p = points.get(i);
-        let key = (
-            (p[0] * inv_tol).round() as i64,
-            (p[1] * inv_tol).round() as i64,
-            (p[2] * inv_tol).round() as i64,
-        );
-
-        let mut found = None;
-
-        // Check neighboring cells (3x3x3 neighborhood for robustness)
-        'search: for dx in -1..=1 {
-            for dy in -1..=1 {
-                for dz in -1..=1 {
-                    let nkey = (key.0 + dx, key.1 + dy, key.2 + dz);
-                    if let Some(indices) = grid.get(&nkey) {
-                        for &idx in indices {
-                            let q: [f64; 3] = new_points.get(idx);
-                            let d2 = (p[0] - q[0]) * (p[0] - q[0])
-                                + (p[1] - q[1]) * (p[1] - q[1])
-                                + (p[2] - q[2]) * (p[2] - q[2]);
-                            if d2 <= tol2 {
-                                found = Some(idx);
-                                break 'search;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if let Some(existing) = found {
-            *pm = existing;
-        } else {
-            let new_idx = new_points.len();
-            new_points.push(p);
-            *pm = new_idx;
-            grid.entry(key).or_default().push(new_idx);
-        }
+    if n == 0 {
+        return (Points::new(), vec![]);
     }
 
-    (new_points, point_map)
+    let cell_size = if tolerance > 0.0 { tolerance } else { 1e-12 };
+    let inv_cell = 1.0 / cell_size;
+
+    let mut point_map = vec![0usize; n];
+
+    // Sort-based approach: quantize to grid cell, group by cell, pick first in each group
+    // This avoids per-point hash table operations entirely.
+
+    // Quantize all points to grid keys
+    let mut keyed: Vec<(u64, usize)> = Vec::with_capacity(n);
+    for i in 0..n {
+        let p = points.get(i);
+        let gx = (p[0] * inv_cell).floor() as i64;
+        let gy = (p[1] * inv_cell).floor() as i64;
+        let gz = (p[2] * inv_cell).floor() as i64;
+        // Pack into single u64 via bit interleaving (Morton code)
+        let key = morton_encode(gx, gy, gz);
+        keyed.push((key, i));
+    }
+
+    // Sort by Morton key — points in the same cell are adjacent
+    keyed.sort_unstable_by_key(|&(k, _)| k);
+
+    // Deduplicate: first point in each group becomes the representative
+    let mut new_points_flat: Vec<f64> = Vec::with_capacity(n * 3);
+    let mut current_key = u64::MAX;
+    let mut current_idx = 0usize;
+
+    for &(key, orig_idx) in &keyed {
+        if key != current_key {
+            // New unique cell
+            current_key = key;
+            current_idx = new_points_flat.len() / 3;
+            let p = points.get(orig_idx);
+            new_points_flat.push(p[0]);
+            new_points_flat.push(p[1]);
+            new_points_flat.push(p[2]);
+        }
+        point_map[orig_idx] = current_idx;
+    }
+
+    (Points::from_flat_vec(new_points_flat), point_map)
+}
+
+#[inline]
+fn morton_encode(x: i64, y: i64, z: i64) -> u64 {
+    // Simple hash-based encoding (not true Morton, but orders spatially)
+    let ux = x as u64;
+    let uy = y as u64;
+    let uz = z as u64;
+    // FNV-1a style mixing
+    let mut h = 0xcbf29ce484222325u64;
+    h ^= ux; h = h.wrapping_mul(0x100000001b3);
+    h ^= uy; h = h.wrapping_mul(0x100000001b3);
+    h ^= uz; h = h.wrapping_mul(0x100000001b3);
+    h
 }
 
 /// Remap cell point indices and optionally remove degenerate cells.

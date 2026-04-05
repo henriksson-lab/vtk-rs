@@ -47,9 +47,31 @@ pub fn clip_by_plane(
         }
     }
 
+    // Compact: only keep referenced points
+    let mut used = vec![false; points.len()];
+    for ci in 0..polys.num_cells() {
+        for &vid in polys.cell(ci) {
+            used[vid as usize] = true;
+        }
+    }
+    let mut point_map = vec![0i64; points.len()];
+    let mut compact_points = Points::new();
+    for i in 0..points.len() {
+        if used[i] {
+            point_map[i] = compact_points.len() as i64;
+            compact_points.push(points.get(i));
+        }
+    }
+    let mut compact_polys = CellArray::new();
+    for ci in 0..polys.num_cells() {
+        let cell = polys.cell(ci);
+        let remapped: Vec<i64> = cell.iter().map(|&v| point_map[v as usize]).collect();
+        compact_polys.push_cell(&remapped);
+    }
+
     let mut output = PolyData::new();
-    output.points = points;
-    output.polys = polys;
+    output.points = compact_points;
+    output.polys = compact_polys;
     output
 }
 

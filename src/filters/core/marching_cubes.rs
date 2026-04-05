@@ -13,47 +13,46 @@ pub fn marching_cubes(image: &ImageData, scalars: &[f64], iso_value: f64) -> Pol
 
     let nx = dims[0];
     let ny = dims[1];
+    let nxy = nx * ny;
+    let sp = image.spacing();
+    let org = image.origin();
 
-    let mut points = Points::<f64>::new();
-    let mut polys = CellArray::new();
-    let mut normals_arr = DataArray::<f64>::new("Normals", 3);
+    let mut pts_flat: Vec<f64> = Vec::new();
+    let mut nrm_flat: Vec<f64> = Vec::new();
+    let mut conn: Vec<i64> = Vec::new();
 
     // Iterate over all cells (voxels)
     for k in 0..dims[2] - 1 {
+        let z0 = org[2] + k as f64 * sp[2];
+        let z1 = z0 + sp[2];
         for j in 0..dims[1] - 1 {
+            let y0 = org[1] + j as f64 * sp[1];
+            let y1 = y0 + sp[1];
             for i in 0..dims[0] - 1 {
-                // 8 corner indices (VTK voxel ordering)
+                let x0 = org[0] + i as f64 * sp[0];
+                let x1 = x0 + sp[0];
+
+                // Inline index computation (avoid method call overhead)
+                let base = k * nxy + j * nx + i;
                 let corners = [
-                    image.index_from_ijk(i, j, k),
-                    image.index_from_ijk(i + 1, j, k),
-                    image.index_from_ijk(i + 1, j + 1, k),
-                    image.index_from_ijk(i, j + 1, k),
-                    image.index_from_ijk(i, j, k + 1),
-                    image.index_from_ijk(i + 1, j, k + 1),
-                    image.index_from_ijk(i + 1, j + 1, k + 1),
-                    image.index_from_ijk(i, j + 1, k + 1),
+                    base, base + 1, base + nx + 1, base + nx,
+                    base + nxy, base + nxy + 1, base + nxy + nx + 1, base + nxy + nx,
                 ];
 
-                let values: [f64; 8] = [
-                    scalars[corners[0]],
-                    scalars[corners[1]],
-                    scalars[corners[2]],
-                    scalars[corners[3]],
-                    scalars[corners[4]],
-                    scalars[corners[5]],
-                    scalars[corners[6]],
-                    scalars[corners[7]],
-                ];
+                let values: [f64; 8] = unsafe {[
+                    *scalars.get_unchecked(corners[0]),
+                    *scalars.get_unchecked(corners[1]),
+                    *scalars.get_unchecked(corners[2]),
+                    *scalars.get_unchecked(corners[3]),
+                    *scalars.get_unchecked(corners[4]),
+                    *scalars.get_unchecked(corners[5]),
+                    *scalars.get_unchecked(corners[6]),
+                    *scalars.get_unchecked(corners[7]),
+                ]};
 
                 let positions: [[f64; 3]; 8] = [
-                    image.point_from_ijk(i, j, k),
-                    image.point_from_ijk(i + 1, j, k),
-                    image.point_from_ijk(i + 1, j + 1, k),
-                    image.point_from_ijk(i, j + 1, k),
-                    image.point_from_ijk(i, j, k + 1),
-                    image.point_from_ijk(i + 1, j, k + 1),
-                    image.point_from_ijk(i + 1, j + 1, k + 1),
-                    image.point_from_ijk(i, j + 1, k + 1),
+                    [x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],
+                    [x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],
                 ];
 
                 // Compute cube index
@@ -73,16 +72,34 @@ pub fn marching_cubes(image: &ImageData, scalars: &[f64], iso_value: f64) -> Pol
                     continue;
                 }
 
-                // Compute gradient (for normals) at each corner
-                let grads: [[f64; 3]; 8] = std::array::from_fn(|c| {
-                    gradient_at(scalars, corners[c], nx, ny, dims)
-                });
+                // Compute gradients lazily — only for corners that are edge endpoints
+                // Inline gradient: for interior voxels, all 8 corners have valid neighbors
+                let interior = i > 0 && i + 1 < dims[0] - 1 && j > 0 && j + 1 < dims[1] - 1 && k > 0 && k + 1 < dims[2] - 1;
+                let mut grads: [[f64; 3]; 8] = [[0.0; 3]; 8];
+                let mut grad_computed = [false; 8];
 
-                // Interpolate vertices on active edges
                 let mut edge_verts = [0usize; 12];
                 for edge in 0..12 {
                     if edge_flags & (1 << edge) != 0 {
                         let (e0, e1) = EDGE_VERTICES[edge];
+                        for &ec in &[e0, e1] {
+                            if !grad_computed[ec] {
+                                let ci = corners[ec];
+                                if interior {
+                                    // Fast path: no boundary checks
+                                    unsafe {
+                                        grads[ec] = [
+                                            (*scalars.get_unchecked(ci + 1) - *scalars.get_unchecked(ci - 1)) * 0.5,
+                                            (*scalars.get_unchecked(ci + nx) - *scalars.get_unchecked(ci - nx)) * 0.5,
+                                            (*scalars.get_unchecked(ci + nxy) - *scalars.get_unchecked(ci - nxy)) * 0.5,
+                                        ];
+                                    }
+                                } else {
+                                    grads[ec] = gradient_at(scalars, ci, nx, ny, dims);
+                                }
+                                grad_computed[ec] = true;
+                            }
+                        }
                         let t = if (values[e1] - values[e0]).abs() > 1e-10 {
                             (iso_value - values[e0]) / (values[e1] - values[e0])
                         } else {
@@ -98,9 +115,9 @@ pub fn marching_cubes(image: &ImageData, scalars: &[f64], iso_value: f64) -> Pol
                             [0.0, 0.0, 1.0]
                         };
 
-                        edge_verts[edge] = points.len();
-                        points.push(p);
-                        normals_arr.push_tuple(&normal);
+                        edge_verts[edge] = pts_flat.len() / 3;
+                        pts_flat.extend_from_slice(&p);
+                        nrm_flat.extend_from_slice(&normal);
                     }
                 }
 
@@ -108,21 +125,24 @@ pub fn marching_cubes(image: &ImageData, scalars: &[f64], iso_value: f64) -> Pol
                 let tri_row = &TRI_TABLE[cube_index as usize];
                 let mut t = 0;
                 while t < tri_row.len() && tri_row[t] != -1 {
-                    polys.push_cell(&[
-                        edge_verts[tri_row[t] as usize] as i64,
-                        edge_verts[tri_row[t + 1] as usize] as i64,
-                        edge_verts[tri_row[t + 2] as usize] as i64,
-                    ]);
+                    conn.push(edge_verts[tri_row[t] as usize] as i64);
+                    conn.push(edge_verts[tri_row[t + 1] as usize] as i64);
+                    conn.push(edge_verts[tri_row[t + 2] as usize] as i64);
                     t += 3;
                 }
             }
         }
     }
 
+    let points = Points::from_flat_vec(pts_flat);
+    let n_tris = conn.len() / 3;
+    let offsets: Vec<i64> = (0..=n_tris).map(|i| (i * 3) as i64).collect();
+    let polys = CellArray::from_raw(offsets, conn);
+
     let mut pd = PolyData::new();
     pd.points = points;
     pd.polys = polys;
-    pd.point_data_mut().add_array(normals_arr.into());
+    pd.point_data_mut().add_array(crate::data::AnyDataArray::F64(DataArray::from_vec("Normals", nrm_flat, 3)));
     pd.point_data_mut().set_active_normals("Normals");
     pd
 }

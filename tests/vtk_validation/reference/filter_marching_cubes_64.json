@@ -1,0 +1,20 @@
+{
+  "num_points": 7446,
+  "num_cells": 14888,
+  "bounds": [
+    12.0,
+    52.0,
+    12.0,
+    52.0,
+    12.0,
+    52.0
+  ],
+  "has_normals": true,
+  "num_normal_tuples": 7446,
+  "scalar_range": [
+    400.0,
+    400.0
+  ],
+  "scalar_name": null,
+  "isovalue": 400
+}

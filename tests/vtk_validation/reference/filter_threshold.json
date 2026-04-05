@@ -1,0 +1,8 @@
+{
+  "num_cells": 448,
+  "num_points": 256,
+  "threshold_range": [
+    0.3,
+    0.7
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "num_points": 962,
+  "num_cells": 1920,
+  "bounds": [
+    -0.49935826659202576,
+    0.49935826659202576,
+    -0.49935826659202576,
+    0.49935826659202576,
+    -0.5,
+    0.5
+  ],
+  "has_normals": true,
+  "num_normal_tuples": 962,
+  "scalar_range": [
+    1.5164575237060762,
+    2.1217457595188653
+  ],
+  "scalar_name": "Mean_Curvature",
+  "curvature_type": "mean"
+}
