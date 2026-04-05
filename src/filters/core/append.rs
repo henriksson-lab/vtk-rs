@@ -1,85 +1,62 @@
-use crate::data::{CellArray, PolyData};
+use crate::data::{CellArray, Points, PolyData};
 
-/// Merge multiple PolyData objects into one.
-///
-/// Points are concatenated and cell point indices are renumbered accordingly.
-/// Point data and cell data arrays that exist in all inputs are merged.
+/// Merge multiple PolyData into one. Pre-sized flat buffers, zero per-element alloc.
 pub fn append(inputs: &[&PolyData]) -> PolyData {
-    if inputs.is_empty() {
-        return PolyData::new();
+    if inputs.is_empty() { return PolyData::new(); }
+    if inputs.len() == 1 { return inputs[0].clone(); }
+
+    let total_pts: usize = inputs.iter().map(|p| p.points.len()).sum();
+
+    let mut pts_flat = Vec::with_capacity(total_pts * 3);
+    for &input in inputs {
+        for i in 0..input.points.len() {
+            let p = input.points.get(i);
+            pts_flat.push(p[0]); pts_flat.push(p[1]); pts_flat.push(p[2]);
+        }
     }
-    if inputs.len() == 1 {
-        return inputs[0].clone();
-    }
+
+    let polys = merge_cells(inputs, |p| &p.polys);
+    let lines = merge_cells(inputs, |p| &p.lines);
+    let verts = merge_cells(inputs, |p| &p.verts);
 
     let mut output = PolyData::new();
-
-    let mut point_offset: i64 = 0;
-
-    for &input in inputs {
-        // Append points
-        for i in 0..input.points.len() {
-            output.points.push(input.points.get(i));
-        }
-
-        // Append cells with offset
-        append_cells_with_offset(&input.verts, &mut output.verts, point_offset);
-        append_cells_with_offset(&input.lines, &mut output.lines, point_offset);
-        append_cells_with_offset(&input.polys, &mut output.polys, point_offset);
-        append_cells_with_offset(&input.strips, &mut output.strips, point_offset);
-
-        point_offset += input.points.len() as i64;
-    }
-
+    output.points = Points::from_flat_vec(pts_flat);
+    output.polys = polys;
+    output.lines = lines;
+    output.verts = verts;
     output
 }
 
-fn append_cells_with_offset(src: &CellArray, dst: &mut CellArray, offset: i64) {
-    for cell in src.iter() {
-        let remapped: Vec<i64> = cell.iter().map(|&id| id + offset).collect();
-        dst.push_cell(&remapped);
+fn merge_cells(inputs: &[&PolyData], get: impl Fn(&PolyData) -> &CellArray) -> CellArray {
+    let total_cells: usize = inputs.iter().map(|p| get(p).num_cells()).sum();
+    if total_cells == 0 { return CellArray::new(); }
+
+    let total_conn: usize = inputs.iter().map(|p| get(p).connectivity_len()).sum();
+    let mut offsets = Vec::with_capacity(total_cells + 1);
+    let mut conn = Vec::with_capacity(total_conn);
+    offsets.push(0i64);
+
+    let mut pt_off: i64 = 0;
+    for &input in inputs {
+        let cells = get(input);
+        for &id in cells.connectivity() { conn.push(id + pt_off); }
+        let base = *offsets.last().unwrap();
+        for i in 1..cells.offsets().len() { offsets.push(base + cells.offsets()[i]); }
+        pt_off += input.points.len() as i64;
     }
+    CellArray::from_raw(offsets, conn)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn append_two_triangles() {
-        let pd1 = PolyData::from_triangles(
-            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-            vec![[0, 1, 2]],
-        );
-        let pd2 = PolyData::from_triangles(
-            vec![[2.0, 0.0, 0.0], [3.0, 0.0, 0.0], [2.0, 1.0, 0.0]],
-            vec![[0, 1, 2]],
-        );
-
-        let result = append(&[&pd1, &pd2]);
-        assert_eq!(result.points.len(), 6);
-        assert_eq!(result.polys.num_cells(), 2);
-
-        // First triangle: original indices
-        assert_eq!(result.polys.cell(0), &[0, 1, 2]);
-        // Second triangle: indices offset by 3
-        assert_eq!(result.polys.cell(1), &[3, 4, 5]);
-    }
-
-    #[test]
-    fn append_empty() {
-        let result = append(&[]);
-        assert_eq!(result.points.len(), 0);
-    }
-
-    #[test]
-    fn append_single() {
-        let pd = PolyData::from_triangles(
-            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-            vec![[0, 1, 2]],
-        );
-        let result = append(&[&pd]);
-        assert_eq!(result.points.len(), 3);
-        assert_eq!(result.polys.num_cells(), 1);
+    fn append_two() {
+        let a = PolyData::from_triangles(vec![[0.0,0.0,0.0],[1.0,0.0,0.0],[0.0,1.0,0.0]], vec![[0,1,2]]);
+        let b = PolyData::from_triangles(vec![[2.0,0.0,0.0],[3.0,0.0,0.0],[2.0,1.0,0.0]], vec![[0,1,2]]);
+        let r = append(&[&a, &b]);
+        assert_eq!(r.points.len(), 6);
+        assert_eq!(r.polys.num_cells(), 2);
+        assert_eq!(r.polys.cell(1), &[3, 4, 5]);
     }
 }

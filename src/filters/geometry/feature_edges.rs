@@ -46,51 +46,44 @@ impl Default for FeatureEdgesParams {
 ///
 /// Returns a PolyData containing line cells for the selected edge types.
 pub fn feature_edges(input: &PolyData, params: &FeatureEdgesParams) -> PolyData {
-    // Build edge -> face list mapping
-    // Key: sorted (min, max) point id pair
-    let mut edge_faces: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
-    let mut face_normals: Vec<[f64; 3]> = Vec::new();
+    // Build edge -> (face_count, face0, face1) using packed u64 key
+    // Stores at most 2 face indices per edge (sufficient for manifold detection)
+    let mut edge_data: HashMap<u64, (u8, usize, usize)> = HashMap::new();
+    let nc = input.polys.num_cells();
+    let mut face_normals: Vec<[f64; 3]> = Vec::with_capacity(nc);
 
-    for (face_idx, cell) in input.polys.iter().enumerate() {
-        // Compute face normal
-        let normal = polygon_normal(input, cell);
-        face_normals.push(normal);
-
+    for ci in 0..nc {
+        let cell = input.polys.cell(ci);
+        face_normals.push(polygon_normal(input, cell));
         let n = cell.len();
         for i in 0..n {
-            let a = cell[i];
-            let b = cell[(i + 1) % n];
-            let key = if a < b { (a, b) } else { (b, a) };
-            edge_faces.entry(key).or_default().push(face_idx);
+            let (a, b) = (cell[i], cell[(i+1) % n]);
+            let key = if a < b { (a as u64) << 32 | b as u64 } else { (b as u64) << 32 | a as u64 };
+            let entry = edge_data.entry(key).or_insert((0, 0, 0));
+            if entry.0 == 0 { entry.1 = ci; }
+            else if entry.0 == 1 { entry.2 = ci; }
+            entry.0 += 1;
         }
     }
 
     let cos_threshold = (params.feature_angle.to_radians()).cos();
 
-    let mut point_map: HashMap<i64, usize> = HashMap::new();
-    let mut out_points = Points::<f64>::new();
-    let mut out_lines = CellArray::new();
+    // Pre-count edges to allocate output
+    let mut pts_flat: Vec<f64> = Vec::new();
+    let mut line_conn: Vec<i64> = Vec::new();
+    let mut pt_map: Vec<i64> = vec![-1; input.points.len()];
 
-    let map_point = |id: i64, pts: &Points<f64>, out_pts: &mut Points<f64>, pm: &mut HashMap<i64, usize>| -> i64 {
-        *pm.entry(id).or_insert_with(|| {
-            let idx = out_pts.len();
-            out_pts.push(pts.get(id as usize));
-            idx
-        }) as i64
-    };
+    for (&key, &(count, f0, f1)) in &edge_data {
+        let a = (key >> 32) as i64;
+        let b = (key & 0xFFFFFFFF) as i64;
 
-    for (&(a, b), faces) in &edge_faces {
-        let edge_type = if faces.len() == 1 {
+        let edge_type = if count == 1 {
             EdgeType::Boundary
-        } else if faces.len() == 2 {
-            let n1 = face_normals[faces[0]];
-            let n2 = face_normals[faces[1]];
-            let dot = n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2];
-            if dot < cos_threshold {
-                EdgeType::Feature
-            } else {
-                EdgeType::Manifold
-            }
+        } else if count == 2 {
+            let n1 = face_normals[f0];
+            let n2 = face_normals[f1];
+            let dot = n1[0]*n2[0] + n1[1]*n2[1] + n1[2]*n2[2];
+            if dot < cos_threshold { EdgeType::Feature } else { EdgeType::Manifold }
         } else {
             EdgeType::NonManifold
         };
@@ -103,15 +96,26 @@ pub fn feature_edges(input: &PolyData, params: &FeatureEdgesParams) -> PolyData 
         };
 
         if include {
-            let ma = map_point(a, &input.points, &mut out_points, &mut point_map);
-            let mb = map_point(b, &input.points, &mut out_points, &mut point_map);
-            out_lines.push_cell(&[ma, mb]);
+            // Map points (inline, no HashMap)
+            for &id in &[a, b] {
+                let ui = id as usize;
+                if pt_map[ui] < 0 {
+                    pt_map[ui] = (pts_flat.len() / 3) as i64;
+                    let p = input.points.get(ui);
+                    pts_flat.push(p[0]); pts_flat.push(p[1]); pts_flat.push(p[2]);
+                }
+            }
+            line_conn.push(pt_map[a as usize]);
+            line_conn.push(pt_map[b as usize]);
         }
     }
 
+    let n_lines = line_conn.len() / 2;
+    let offsets: Vec<i64> = (0..=n_lines).map(|i| (i*2) as i64).collect();
+
     let mut pd = PolyData::new();
-    pd.points = out_points;
-    pd.lines = out_lines;
+    pd.points = Points::from_flat_vec(pts_flat);
+    pd.lines = CellArray::from_raw(offsets, line_conn);
     pd
 }
 

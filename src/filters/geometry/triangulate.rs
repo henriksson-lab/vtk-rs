@@ -5,6 +5,13 @@ use crate::data::{CellArray, PolyData};
 /// Triangles pass through unchanged. Quads and larger polygons are decomposed
 /// into triangle fans from the first vertex. Triangle strips are also decomposed.
 pub fn triangulate(input: &PolyData) -> PolyData {
+    // Fast path: if already all triangles and no strips, just clone
+    let has_strips = !input.strips.is_empty();
+    let all_tri = input.polys.is_empty() || input.polys.iter().all(|c| c.len() == 3);
+    if all_tri && !has_strips {
+        return input.clone();
+    }
+
     let mut output = input.clone();
 
     // Triangulate polygons
@@ -13,7 +20,7 @@ pub fn triangulate(input: &PolyData) -> PolyData {
     }
 
     // Decompose triangle strips
-    if !input.strips.is_empty() {
+    if has_strips {
         let tri_from_strips = decompose_strips(&input.strips);
         // Append strip-derived triangles to polys
         for cell in tri_from_strips.iter() {
@@ -26,6 +33,13 @@ pub fn triangulate(input: &PolyData) -> PolyData {
 }
 
 fn triangulate_cells(polys: &CellArray) -> CellArray {
+    // Fast path: if all cells are already triangles, return a clone directly.
+    // This matches VTK's TriangleFilter behavior which is a no-op on triangle meshes.
+    let all_triangles = polys.iter().all(|cell| cell.len() == 3);
+    if all_triangles {
+        return polys.clone();
+    }
+
     let mut out = CellArray::new();
 
     for cell in polys.iter() {
