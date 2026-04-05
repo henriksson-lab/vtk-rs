@@ -9,63 +9,95 @@ pub fn slice_by_plane(
     origin: [f64; 3],
     normal: [f64; 3],
 ) -> PolyData {
-    let mut points = Points::<f64>::new();
-    let mut lines = CellArray::new();
+    let nc = input.polys.num_cells();
+    if nc == 0 {
+        return PolyData::new();
+    }
 
-    for cell in input.polys.iter() {
-        if cell.len() < 3 {
+    // Pre-compute signed distances for all points (avoids redundant per-cell recomputation)
+    let np = input.points.len();
+    let mut dists = Vec::with_capacity(np);
+    for i in 0..np {
+        let p = input.points.get(i);
+        dists.push(
+            (p[0] - origin[0]) * normal[0]
+                + (p[1] - origin[1]) * normal[1]
+                + (p[2] - origin[2]) * normal[2],
+        );
+    }
+
+    // Pre-sized flat buffers for output
+    let mut pts_flat: Vec<f64> = Vec::with_capacity(nc * 6); // ~2 points per intersected cell
+    let mut line_conn: Vec<i64> = Vec::with_capacity(nc * 2);
+    let mut line_off: Vec<i64> = Vec::with_capacity(nc + 1);
+    line_off.push(0);
+
+    let offsets = input.polys.offsets();
+    let conn = input.polys.connectivity();
+
+    for ci in 0..nc {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        let cell = &conn[start..end];
+        let n = cell.len();
+        if n < 3 {
             continue;
         }
 
-        // Compute signed distance from each vertex to the plane
-        let dists: Vec<f64> = cell
-            .iter()
-            .map(|&id| {
-                let p = input.points.get(id as usize);
-                (p[0] - origin[0]) * normal[0]
-                    + (p[1] - origin[1]) * normal[1]
-                    + (p[2] - origin[2]) * normal[2]
-            })
-            .collect();
+        // Find edge crossings for this cell
+        let mut c0 = [0.0f64; 3];
+        let mut c1 = [0.0f64; 3];
+        let mut num_crossings = 0u32;
 
-        // Find edge crossings
-        let mut crossings = Vec::new();
-        let n = cell.len();
         for i in 0..n {
             let j = (i + 1) % n;
-            let di = dists[i];
-            let dj = dists[j];
+            let ai = cell[i] as usize;
+            let aj = cell[j] as usize;
+            let di = unsafe { *dists.get_unchecked(ai) };
+            let dj = unsafe { *dists.get_unchecked(aj) };
 
             if (di >= 0.0) != (dj >= 0.0) {
-                // Edge crosses the plane
                 let t = di / (di - dj);
-                let pi = input.points.get(cell[i] as usize);
-                let pj = input.points.get(cell[j] as usize);
-                let intersection = [
+                let pi = input.points.get(ai);
+                let pj = input.points.get(aj);
+                let pt = [
                     pi[0] + t * (pj[0] - pi[0]),
                     pi[1] + t * (pj[1] - pi[1]),
                     pi[2] + t * (pj[2] - pi[2]),
                 ];
-                let idx = points.len() as i64;
-                points.push(intersection);
-                crossings.push(idx);
+                if num_crossings == 0 {
+                    c0 = pt;
+                    num_crossings = 1;
+                } else if num_crossings == 1 {
+                    c1 = pt;
+                    num_crossings = 2;
+                }
+                // For triangles we always get exactly 2 crossings
             } else if di.abs() < 1e-10 && dj.abs() >= 1e-10 {
-                // Vertex i is exactly on the plane
-                let idx = points.len() as i64;
-                points.push(input.points.get(cell[i] as usize));
-                crossings.push(idx);
+                let pt = input.points.get(ai);
+                if num_crossings == 0 {
+                    c0 = pt;
+                    num_crossings = 1;
+                } else if num_crossings == 1 {
+                    c1 = pt;
+                    num_crossings = 2;
+                }
             }
         }
 
-        // For a planar cut through a polygon, we expect exactly 2 crossings
-        if crossings.len() == 2 {
-            lines.push_cell(&[crossings[0], crossings[1]]);
+        if num_crossings == 2 {
+            let idx = (pts_flat.len() / 3) as i64;
+            pts_flat.push(c0[0]); pts_flat.push(c0[1]); pts_flat.push(c0[2]);
+            pts_flat.push(c1[0]); pts_flat.push(c1[1]); pts_flat.push(c1[2]);
+            line_conn.push(idx);
+            line_conn.push(idx + 1);
+            line_off.push(line_conn.len() as i64);
         }
     }
 
     let mut pd = PolyData::new();
-    pd.points = points;
-    pd.lines = lines;
+    pd.points = Points::from_flat_vec(pts_flat);
+    pd.lines = CellArray::from_raw(line_off, line_conn);
     pd
 }
 

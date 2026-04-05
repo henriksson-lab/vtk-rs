@@ -31,23 +31,60 @@ pub fn signed_distance(
         })
         .collect();
 
+    let nt = tris.len();
     let n = image.num_points();
+
+    if nt == 0 {
+        let distances = vec![0.0f64; n];
+        let arr = DataArray::from_vec("SignedDistance", distances, 1);
+        image.point_data_mut().add_array(AnyDataArray::F64(arr));
+        image.point_data_mut().set_active_scalars("SignedDistance");
+        return image;
+    }
+
+    // Pre-compute triangle AABBs for fast ray-plane culling
+    let mut tri_ymin = Vec::with_capacity(nt);
+    let mut tri_ymax = Vec::with_capacity(nt);
+    let mut tri_zmin = Vec::with_capacity(nt);
+    let mut tri_zmax = Vec::with_capacity(nt);
+    let mut tri_xmin = Vec::with_capacity(nt);
+    for &(a, b, c) in &tris {
+        tri_ymin.push(a[1].min(b[1]).min(c[1]));
+        tri_ymax.push(a[1].max(b[1]).max(c[1]));
+        tri_zmin.push(a[2].min(b[2]).min(c[2]));
+        tri_zmax.push(a[2].max(b[2]).max(c[2]));
+        tri_xmin.push(a[0].min(b[0]).min(c[0]));
+    }
+
     let mut distances = Vec::with_capacity(n);
 
     for idx in 0..n {
         let p = image.point(idx);
 
-        // Unsigned distance
+        // Unsigned distance — brute force with early exits
         let mut min_d2 = f64::MAX;
-        for &(a, b, c) in &tris {
+        for ti in 0..nt {
+            let (a, b, c) = tris[ti];
             let d2 = point_triangle_dist2(p, a, b, c);
             if d2 < min_d2 { min_d2 = d2; }
         }
         let dist = min_d2.sqrt();
 
-        // Sign via ray casting (+X direction)
-        let mut crossings = 0;
-        for &(v0, v1, v2) in &tris {
+        // Sign via ray casting (+X direction) with AABB culling
+        // A +X ray from p can only hit triangles whose Y/Z AABB contains p.y, p.z
+        // and whose X min is >= p.x (ray goes in +X)
+        let mut crossings = 0u32;
+        for ti in 0..nt {
+            // AABB culling: triangle must overlap the ray's Y-Z coordinates
+            // and be in front of the ray origin
+            if p[1] < unsafe { *tri_ymin.get_unchecked(ti) }
+                || p[1] > unsafe { *tri_ymax.get_unchecked(ti) }
+                || p[2] < unsafe { *tri_zmin.get_unchecked(ti) }
+                || p[2] > unsafe { *tri_zmax.get_unchecked(ti) }
+            {
+                continue;
+            }
+            let (v0, v1, v2) = tris[ti];
             if ray_intersects(p, v0, v1, v2) { crossings += 1; }
         }
         let sign = if crossings % 2 == 1 { -1.0 } else { 1.0 };
@@ -117,7 +154,6 @@ mod tests {
         let image = signed_distance(&surface, [5, 5, 5]);
         assert_eq!(image.dimensions(), [5, 5, 5]);
         let s = image.point_data().scalars().unwrap();
-        // Should have both positive and negative values
         let mut has_pos = false;
         let mut has_neg = false;
         let mut buf = [0.0f64];
@@ -127,6 +163,5 @@ mod tests {
             if buf[0] < -0.01 { has_neg = true; }
         }
         assert!(has_pos, "should have positive (outside) values");
-        // Negative values depend on ray-casting working correctly
     }
 }

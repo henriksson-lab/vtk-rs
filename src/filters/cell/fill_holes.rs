@@ -8,62 +8,77 @@ use crate::data::PolyData;
 /// closed loops, and fills each loop with a fan of triangles from the
 /// loop centroid.
 pub fn fill_holes(input: &PolyData) -> PolyData {
-    // Count edge usage
-    let mut edge_count: HashMap<(i64, i64), usize> = HashMap::new();
-    let mut edge_directed: HashMap<(i64, i64), (i64, i64)> = HashMap::new();
+    // Count edge usage using packed u64 keys for speed
+    let mut edge_count: HashMap<u64, u8> = HashMap::new();
 
-    for cell in input.polys.iter() {
+    let offsets = input.polys.offsets();
+    let conn = input.polys.connectivity();
+    let nc = input.polys.num_cells();
+
+    for ci in 0..nc {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        let cell = &conn[start..end];
         let n = cell.len();
         for i in 0..n {
             let a = cell[i];
             let b = cell[(i + 1) % n];
-            let key = if a < b { (a, b) } else { (b, a) };
-            *edge_count.entry(key).or_insert(0) += 1;
-            edge_directed.insert((a, b), key);
+            let key = if a < b {
+                (a as u64) << 32 | b as u64
+            } else {
+                (b as u64) << 32 | a as u64
+            };
+            let e = edge_count.entry(key).or_insert(0);
+            *e = (*e).saturating_add(1);
         }
     }
 
-    // Boundary edges: used exactly once
-    let boundary_edges: Vec<(i64, i64)> = edge_count
-        .iter()
-        .filter(|(_, &count)| count == 1)
-        .map(|(&key, _)| key)
-        .collect();
-
-    if boundary_edges.is_empty() {
+    // Check if there are any boundary edges at all
+    let has_boundary = edge_count.values().any(|&c| c == 1);
+    if !has_boundary {
         return input.clone();
     }
 
-    // Build adjacency for boundary vertices
+    // Build directed boundary edge adjacency: vertex → next vertex
     let mut next_map: HashMap<i64, i64> = HashMap::new();
-    for cell in input.polys.iter() {
+    for ci in 0..nc {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        let cell = &conn[start..end];
         let n = cell.len();
         for i in 0..n {
             let a = cell[i];
             let b = cell[(i + 1) % n];
-            let key = if a < b { (a, b) } else { (b, a) };
+            let key = if a < b {
+                (a as u64) << 32 | b as u64
+            } else {
+                (b as u64) << 32 | a as u64
+            };
             if edge_count.get(&key) == Some(&1) {
-                // This is a boundary edge — record the directed version
                 next_map.insert(a, b);
             }
         }
     }
 
-    // Trace loops
-    let mut visited: HashMap<i64, bool> = HashMap::new();
+    // Trace loops using a simple visited set
+    let mut visited = vec![false; input.points.len()];
     let mut loops: Vec<Vec<i64>> = Vec::new();
 
     for &start in next_map.keys() {
-        if visited.contains_key(&start) {
+        let si = start as usize;
+        if si < visited.len() && visited[si] {
             continue;
         }
         let mut loop_pts = Vec::new();
         let mut current = start;
         loop {
-            if visited.contains_key(&current) {
+            let ci = current as usize;
+            if ci < visited.len() && visited[ci] {
                 break;
             }
-            visited.insert(current, true);
+            if ci < visited.len() {
+                visited[ci] = true;
+            }
             loop_pts.push(current);
             match next_map.get(&current) {
                 Some(&next) => current = next,
@@ -79,7 +94,6 @@ pub fn fill_holes(input: &PolyData) -> PolyData {
 
     // Fill each loop with a fan triangulation
     for lp in &loops {
-        // Compute centroid
         let mut cx = 0.0;
         let mut cy = 0.0;
         let mut cz = 0.0;
@@ -93,7 +107,6 @@ pub fn fill_holes(input: &PolyData) -> PolyData {
         let center_idx = pd.points.len() as i64;
         pd.points.push([cx / n, cy / n, cz / n]);
 
-        // Fan triangles (reversed winding to match boundary)
         for i in 0..lp.len() {
             let a = lp[i];
             let b = lp[(i + 1) % lp.len()];
@@ -110,24 +123,21 @@ mod tests {
 
     #[test]
     fn fill_single_hole() {
-        // Open mesh: two triangles forming an open "V" with a hole
         let pd = PolyData::from_triangles(
             vec![
-                [0.0, 0.0, 0.0], // 0
-                [1.0, 0.0, 0.0], // 1
-                [0.5, 1.0, 0.0], // 2
-                [1.5, 1.0, 0.0], // 3
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.5, 1.0, 0.0],
+                [1.5, 1.0, 0.0],
             ],
             vec![[0, 1, 2], [1, 3, 2]],
         );
         let result = fill_holes(&pd);
-        // Should have more polys than input (hole filled)
         assert!(result.polys.num_cells() >= 2);
     }
 
     #[test]
     fn closed_mesh_unchanged() {
-        // A tetrahedron has no boundary edges
         let pd = PolyData::from_triangles(
             vec![
                 [0.0, 0.0, 0.0], [1.0, 0.0, 0.0],
@@ -136,7 +146,6 @@ mod tests {
             vec![[0, 2, 1], [0, 1, 3], [1, 2, 3], [0, 3, 2]],
         );
         let result = fill_holes(&pd);
-        // No holes to fill — same number of polys
         assert_eq!(result.polys.num_cells(), 4);
     }
 }
