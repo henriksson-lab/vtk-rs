@@ -4,6 +4,8 @@ A pure Rust reimplementation of [VTK](https://vtk.org/) (The Visualization Toolk
 
 **~300K lines of Rust | 5300+ source files | 9300+ tests | 22 I/O formats | 4000+ filters | wgpu rendering**
 
+Note that this package is yet to undergo a fair amount of testing!
+
 ## Quick Start
 
 ```rust
