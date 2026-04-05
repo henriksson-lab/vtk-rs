@@ -2,7 +2,7 @@
 name = "vtk"
 version = "0.1.0"
 edition = "2021"
-description = "Convenience crate that re-exports all vtk-rs modules"
+description = "Pure Rust visualization toolkit — single-crate API"
 
 [dependencies]
 vtk-types = { workspace = true }
