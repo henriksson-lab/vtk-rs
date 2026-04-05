@@ -8,9 +8,5 @@ name = "vtk_python"
 crate-type = ["cdylib"]
 
 [dependencies]
-vtk-types = { workspace = true }
-vtk-data = { workspace = true }
-vtk-filters = { workspace = true }
-vtk-io-legacy = { workspace = true }
-vtk-io-stl = { workspace = true }
+vtk = { path = "../vtk" }
 pyo3 = { version = "0.23", features = ["extension-module"] }

@@ -1,4 +1,5 @@
-Below is the license for C++ VTK, from which this version is derived
+Below is the license for C++ VTK, from which this version is derived.
+All our additions are to be considered public domain or same license.
 
 BSD 3-clause license
 

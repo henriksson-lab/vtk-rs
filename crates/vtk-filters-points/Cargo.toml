@@ -1,8 +1,0 @@
-[package]
-name = "vtk-filters-points"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-vtk-types = { path = "../vtk-types" }
-vtk-data = { path = "../vtk-data" }

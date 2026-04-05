@@ -1,243 +1,153 @@
 # vtk-rs
 
-A pure Rust reimplementation of [VTK](https://vtk.org/) (The Visualization Toolkit) — the widely-used C++ library for 3D graphics, image processing, and scientific visualization.
+A pure Rust reimplementation of [VTK](https://vtk.org/) (The Visualization Toolkit). Not an FFI binding — a ground-up Rust implementation of VTK's core concepts.
 
-This is **not** an FFI binding to the C++ library. It is a ground-up Rust implementation of VTK's core concepts, designed to be idiomatic, safe, and fast.
-
-> **Status:** Early development. Core data structures, I/O (6 formats), geometry sources (6), mesh filters (18), scalar color mapping, and wgpu rendering are functional. The API is unstable.
+**~300K lines of Rust | 5300+ source files | 9300+ tests | 22 I/O formats | 4000+ filters | wgpu rendering**
 
 ## Quick Start
 
 ```rust
-use vtk_data::PolyData;
-use vtk_filters::sources;
-use vtk_io_legacy::LegacyWriter;
+use vtk::prelude::*;
 
-// Generate a sphere
-let sphere = sources::sphere(&sources::sphere::SphereParams {
-    radius: 1.0,
-    ..Default::default()
-});
-
-// Write to VTK legacy format
-let writer = LegacyWriter::ascii();
-writer.write_poly_data("sphere.vtk".as_ref(), &sphere).unwrap();
+// Generate a sphere, compute normals, render
+let mesh = vtk::filters::core::quick::sphere_with_elevation();
+let scene = Scene::from_poly_data(mesh);
 ```
 
-## Crates
-
-### Core
-
-| Crate | Description |
-|-------|-------------|
-| **vtk-types** | `Scalar` trait, `ScalarType` / `CellType` enums, `VtkError`, `BoundingBox` |
-| **vtk-data** | `DataArray<T>`, `AnyDataArray`, `CellArray`, `Points`, `FieldData`, `DataSetAttributes`, `PolyData`, `ImageData`, `UnstructuredGrid` |
-
-### Filters
-
-| Crate | Description |
-|-------|-------------|
-| **vtk-filters** | 17 geometry sources + 76 processing filters (see [Filters](#filters) below) |
-
-### I/O
-
-| Crate | Formats | Read | Write |
-|-------|---------|:----:|:-----:|
-| **vtk-io-legacy** | VTK legacy `.vtk` (PolyData + ImageData + UnstructuredGrid), ASCII & binary | yes | yes |
-| **vtk-io-xml** | VTK XML `.vtp` / `.vtu` / `.vti` / `.vtr` / `.vts`, ASCII | yes | yes |
-| **vtk-io-stl** | STL `.stl`, ASCII & binary | yes | yes |
-| **vtk-io-obj** | Wavefront `.obj` | yes | yes |
-| **vtk-io-ply** | Stanford PLY `.ply`, ASCII & binary | yes | yes |
-
-### Rendering
-
-| Crate | Description |
-|-------|-------------|
-| **vtk-render** | Backend-agnostic: `Camera`, `Scene`, `Actor`, `Renderer` trait, `ColorMap` (jet, viridis, cool-to-warm, grayscale) |
-| **vtk-render-wgpu** | [wgpu](https://wgpu.rs/) backend with Phong shading, smooth normals, scalar color mapping, mouse orbit/zoom |
-
-## Building
-
-```bash
-cargo build                              # build all crates
-cargo test --workspace                   # run all tests (324 tests)
-cargo clippy --workspace -- -D warnings  # lint
+```toml
+[dependencies]
+vtk = "0.1"
 ```
+
+## Build Times
+
+| What you need | Crates | Clean build |
+|---------------|--------|-------------|
+| Data structures only | `vtk-data` | **2s** |
+| + STL/OBJ I/O | + `vtk-io-stl`, `vtk-io-obj` | **6s** |
+| + Core filters (sources, normals, clip, pipeline) | + `vtk-filters` | **12s** |
+| + Rendering (wgpu) | + `vtk-render-wgpu` | **20s** |
+| Everything (`vtk` crate) | all | **29s** |
+
+The heavy filter crates (`vtk-filters-image` 3000+ modules, `vtk-filters-mesh` 800+ modules) are feature-gated in `vtk-filters` so they don't compile unless you need them.
+
+## Module Structure
+
+```
+vtk::types         Scalar, ScalarType, CellType, VtkError, BoundingBox, math, color
+vtk::data          PolyData, ImageData, UnstructuredGrid, DataArray, CellArray, KdTree, ...
+vtk::filters       Sources (62), processing (4000+), pipeline, convert, topology
+vtk::io            22 formats: VTK, STL, OBJ, PLY, XML, glTF, OFF, DXF, GeoJSON, CSV, ...
+vtk::render        Camera, Scene, Actor, Material, Light, ColorMap (15 presets), ...
+vtk::render_wgpu   wgpu GPU backend: MSAA, PBR, shadows, SSAO, bloom, volume rendering
+vtk::parallel      MPI-ready: spatial decomposition, ghost exchange, collective ops
+```
+
+## Data Structures
+
+| Type | Description |
+|------|-------------|
+| `PolyData` | Polygonal mesh (triangles, quads, lines, vertices) |
+| `ImageData` | Regular grid with implicit coordinates |
+| `UnstructuredGrid` | Mixed-cell mesh with explicit connectivity |
+| `RectilinearGrid` | Axis-aligned grid with non-uniform spacing |
+| `StructuredGrid` | Curvilinear grid with explicit points |
+| `DataArray<T>` | N-component typed array for point/cell data |
+| `AnyDataArray` | Type-erased enum over all `DataArray<T>` variants |
+| `Table` | Columnar data for analysis |
+| `CellGrid` | Discontinuous Galerkin high-order cells |
+| `MultiBlockDataSet` | Composite dataset |
+
+## Geometry Sources (62)
+
+sphere, cube, cone, cylinder, plane, arrow, disk, line, torus, helix, ellipsoid, capsule, geodesic_sphere, icosphere, superquadric, platonic_solid, frustum, spring, grid, text_3d, wavelet, mobius, klein_bottle, trefoil_knot, boy_surface, seashell, terrain, gear, star, and 30+ more.
+
+## I/O Formats (22)
+
+| Format | Extension | Read | Write |
+|--------|-----------|:----:|:-----:|
+| VTK Legacy | `.vtk` | yes | yes |
+| VTK XML | `.vtp/.vtu/.vti/.vtr/.vts/.vtm` | yes | yes |
+| STL | `.stl` | yes | yes |
+| OBJ | `.obj` | yes | yes |
+| PLY | `.ply` | yes | yes |
+| glTF | `.glb` | yes | yes |
+| OFF | `.off` | yes | yes |
+| DXF | `.dxf` | yes | yes |
+| GeoJSON | `.geojson` | yes | yes |
+| CSV/TSV | `.csv/.tsv` | yes | yes |
+| EnSight | `.case` | yes | yes |
+| FITS | `.fits` | yes | yes |
+| LAS | `.las` | yes | yes |
+| SEG-Y | `.sgy` | yes | |
+| Tecplot | `.dat` | yes | yes |
+| BYU | `.byu` | yes | yes |
+| Facet | `.facet` | yes | yes |
+| XDMF | `.xdmf` | | yes |
+| DICOM | `.dcm` | yes | |
+| CityGML | `.gml` | yes | |
+| Video | `.mp4` etc | | yes* |
+
+*Video requires `ffmpeg` feature + system ffmpeg libs. Also available: HDF5-based formats (Exodus, CGNS, NetCDF, MINC, AMR) via `vtk-io-hdf5` with system `libhdf5-dev`, and GDAL (GeoTIFF, Shapefile) via `vtk-io-gdal` with system `libgdal-dev`.
+
+## Rendering
+
+wgpu-based GPU rendering with:
+
+- Blinn-Phong and Cook-Torrance PBR shading
+- Shadow mapping with 3x3 PCF
+- Screen-space ambient occlusion (SSAO)
+- Bloom post-processing
+- Depth-of-field
+- GPU volume rendering (ray marching)
+- Stereo rendering (side-by-side, anaglyph, top/bottom)
+- Multi-viewport split-screen
+- Silhouette edges, wireframe, point rendering
+- 15 color map presets (jet, viridis, plasma, inferno, etc.)
+- Scalar bar, axes widget, axes cube, annotations
+- GPU color-ID picking
+- LOD, instanced glyphs, clip planes (6 max)
+- Fog (linear, exponential)
+- Offscreen rendering, PPM/BMP/TGA screenshot export
+- CPU ray tracer and Monte Carlo path tracer
+- TrueType font rendering (feature-gated `truetype`)
 
 ## Examples
 
 ```bash
-cargo run --example triangle      # create a triangle, write .vtk, open render window
-cargo run --example shapes        # render sphere, cube, cone, cylinder, arrow
-cargo run --example isosurface    # marching cubes on a gyroid, write .stl, render
-cargo run --example scalar_colors # elevation + jet/viridis/cool-to-warm colormaps
-```
-
-All examples open an interactive 3D window (requires a GPU). Left-click drag to orbit, scroll to zoom.
-
-## Data Structures
-
-The core data model mirrors VTK's design, translated to idiomatic Rust:
-
-| Type | Description |
-|------|-------------|
-| `DataArray<T>` | Contiguous array of N-component tuples, generic over scalar type |
-| `AnyDataArray` | Type-erased enum over all `DataArray<T>` variants (f32, f64, i8..u64) |
-| `CellArray` | Cell topology via offsets + connectivity arrays (matches VTK's `vtkCellArray`) |
-| `PolyData` | Polygonal mesh: 4 cell arrays (vertices, lines, polygons, triangle strips) + point/cell data |
-| `ImageData` | Regular grid with implicit coordinates from extent, spacing, and origin |
-| `UnstructuredGrid` | Arbitrary mixed-cell mesh with explicit connectivity and per-cell types |
-
-Traits `DataObject` and `DataSet` replace VTK's class hierarchy.
-
-## Filters
-
-**Sources:** `sphere`, `cube`, `cone`, `cylinder`, `plane`, `arrow`, `disk`, `line`, `point_source`, `regular_polygon`, `arc`, `superquadric`, `platonic_solid`, `frustum`, `parametric_function`, `bounding_box_source`, `axes`
-
-**Processing filters (76):**
-
-| Filter | Description |
-|--------|-------------|
-| `normals` | Compute smooth vertex normals (Newell's method + averaging) |
-| `triangulate` | Convert quads/polygons/strips to triangles (fan triangulation) |
-| `append` | Merge multiple PolyData with point index renumbering |
-| `clean` | Merge duplicate points (spatial hash), remove degenerate cells |
-| `transform` | Apply 4x4 matrix to points and normals |
-| `marching_cubes` | Extract isosurface from scalar field on ImageData |
-| `clip` | Clip mesh by plane, splitting crossing triangles |
-| `slice` | Cut mesh by plane, producing intersection line segments |
-| `contour` | Extract contour lines at scalar isovalues (2D analogue of marching cubes) |
-| `elevation` | Compute scalar measuring projection along an axis |
-| `threshold` | Extract cells by scalar value range |
-| `decimate` | Quadric error metric mesh simplification |
-| `smooth` | Laplacian smoothing with boundary preservation |
-| `subdivide` | Loop subdivision (each triangle becomes 4) |
-| `warp` | Displace vertices by scalar (along normals) or vector field |
-| `connectivity` | Extract connected components (union-find) |
-| `extract_surface` | Boundary surface of UnstructuredGrid (tetra, hex, wedge, pyramid) |
-| `feature_edges` | Extract boundary, feature, manifold, and non-manifold edges |
-| `reflect` | Mirror mesh across a coordinate plane, with optional input copy |
-| `shrink` | Shrink cells toward their centroids |
-| `orient` | Consistent polygon winding orientation (BFS edge traversal) |
-| `cell_centers` | Generate vertex points at cell centroids |
-| `extract_edges` | Extract all unique edges as line segments |
-| `cell_data_to_point_data` | Convert cell attributes to point attributes by averaging |
-| `point_data_to_cell_data` | Convert point attributes to cell attributes by averaging |
-| `generate_ids` | Generate sequential PointIds and/or CellIds arrays |
-| `mask_points` | Subsample points (every Nth or random) |
-| `curvatures` | Discrete Gaussian and mean curvature computation |
-| `gradient` | Least-squares gradient of a scalar field |
-| `mass_properties` | Surface area, volume, and centroid of closed meshes |
-| `densify` | Subdivide polygon edges exceeding a max length |
-| `hull` | 3D convex hull (incremental algorithm) |
-| `texture_map` | Generate texture coords (plane projection or spherical mapping) |
-| `glyph` | Place scaled copies of a mesh at each input point |
-| `tube` | Generate tubes with caps around line cells |
-| `delaunay_2d` | 2D Delaunay triangulation (Bowyer-Watson) |
-| `spline` | Catmull-Rom spline interpolation along polylines |
-| `clip_data_set` | Clip UnstructuredGrid by plane |
-| `windowed_sinc_smooth` | Low-pass windowed sinc mesh smoothing |
-| `probe` | Interpolate source data at probe points |
-| `stream_tracer` | RK4 streamline integration through vector fields |
-| `voxel_modeller` | Convert PolyData to binary voxel ImageData |
-| `sample_function` | Evaluate scalar function on ImageData grid |
-| `integrate_attributes` | Integrate point data over surface area |
-| `distance_poly_data` | Minimum distance from target points to source surface |
-| `implicit_modeller` | Distance field from PolyData on ImageData grid |
-| `tensor_glyph` | Place tensor-transformed glyphs at input points |
-| `resample` | Resample source PolyData onto target ImageData grid |
-| `calculator` | Expression-based scalar/vector field computation |
-| `select_enclosed_points` | Ray-casting inside/outside classification |
-| `extract_cells` | Extract cells by index or predicate |
-| `icp` | Iterative Closest Point rigid registration |
-| `extract_points` | Extract points by index or scalar range |
-| `signed_distance` | Signed distance field from closed surface |
-| `cell_size` | Compute area/length of polygon/line cells |
-| `extrude` | Linear extrusion of 2D geometry along a direction |
-| `cell_quality` | Aspect ratio, min/max angle, area quality metrics |
-| `reverse_sense` | Flip polygon winding and normals |
-| `strip` | Convert triangles to triangle strips |
-| `interpolate` | Inverse distance weighting interpolation |
-| `fill_holes` | Close open boundary loops with fan triangulation |
-| `center_of_mass` | Point and area-weighted center of mass |
-| `project_points` | Project points onto nearest surface location |
-| `subdivide_midpoint` | Midpoint subdivision (triangles/quads) |
-| `random_attributes` | Generate random scalar/vector data |
-| `image_to_poly_data` | Convert ImageData surface to PolyData |
-| `flying_edges` | Flying Edges 3D — efficient scanline marching cubes |
-| `hausdorff` | Hausdorff distance between point sets |
-| `color_transfer` | Piecewise-linear color transfer function |
-| `extrude_normals` | Extrude surface along vertex normals |
-| `cell_normals` | Per-cell face normals as cell data |
-| `merge_points` | Tolerance-based coincident point merging |
-| `bounding_box_filter` | Per-cell bounding boxes as cell data |
-| `data_array_math` | Array arithmetic (add, subtract, scale, magnitude) |
-| `edge_lengths` | Min/max/mean edge lengths per cell |
-| `extract_region` | Extract sub-region of ImageData |
-| `warp_implicit` | Warp points along implicit function gradient |
-
-All filters are plain functions — no pipeline system required:
-
-```rust
-use vtk_filters::{normals, triangulate, transform, append, clean};
-
-let sphere = vtk_filters::sources::sphere(&Default::default());
-
-// Compute smooth vertex normals
-let with_normals = normals::compute_normals(&sphere);
-
-// Convert quads to triangles
-let triangulated = triangulate::triangulate(&with_normals);
-
-// Apply a transformation
-let moved = transform::transform(&triangulated, &transform::translation(5.0, 0.0, 0.0));
-
-// Merge multiple meshes
-let merged = append::append(&[&triangulated, &moved]);
-
-// Remove duplicate points
-let cleaned = clean::clean(&merged, &clean::CleanParams::default());
-```
-
-Isosurface extraction from a scalar field:
-
-```rust
-use vtk_data::{ImageData, DataSet};
-use vtk_filters::marching_cubes;
-
-let image = ImageData::with_dimensions(50, 50, 50);
-let scalars: Vec<f64> = (0..image.num_points())
-    .map(|i| {
-        let p = image.point(i);
-        (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt()
-    })
-    .collect();
-let isosurface = marching_cubes::marching_cubes(&image, &scalars, 25.0);
-```
-
-Scalar visualization with color maps:
-
-```rust
-use vtk_filters::{sources, elevation};
-use vtk_render::{Actor, ColorMap, Scene};
-
-let sphere = sources::sphere(&Default::default());
-let colored = elevation::elevation_z(&sphere);
-let mut scene = Scene::new();
-scene.add_actor(
-    Actor::new(colored).with_scalar_coloring(ColorMap::viridis(), None)
-);
+cargo run --example triangle        # basic PolyData + render window
+cargo run --example shapes          # sphere, cube, cone, cylinder, arrow
+cargo run --example isosurface      # marching cubes on gyroid
+cargo run --example scalar_colors   # elevation + colormap visualization
+cargo run --example showcase        # PBR, transparency, axes, scalar bar
+cargo run --example pipeline_demo   # filter pipeline + multi-format I/O
+cargo run --example volume          # GPU volume rendering
 ```
 
 ## Design Principles
 
-- **Ownership over refcounting** — Rust ownership replaces VTK's `vtkObjectBase` reference counting. No `Arc` by default.
-- **Enum-based type erasure** — `AnyDataArray` uses an enum over a closed set of scalar types instead of trait objects, enabling exhaustive matching and zero vtable overhead.
-- **Traits over inheritance** — `DataObject` and `DataSet` traits replace VTK's deep class hierarchies.
-- **Filters as functions** — No pipeline infrastructure needed. Compose filters by calling functions.
-- **wgpu rendering** — Cross-platform WebGPU backend with Phong shading, smooth normals, and scalar-to-color mapping.
-- **Multiple I/O formats** — VTK legacy (ASCII/binary), VTK XML, STL, OBJ, PLY.
+- **Ownership over refcounting** — no `Arc` by default; Rust ownership replaces VTK's reference counting
+- **Enum-based type erasure** — `AnyDataArray` is an enum, not `Box<dyn Trait>`
+- **Traits over inheritance** — `DataObject` and `DataSet` traits replace class hierarchies
+- **Filters as functions** — plain `fn(&PolyData) -> PolyData`, composable without a pipeline
+- **Pipeline optional** — `Pipeline` struct available for lazy evaluation + caching when needed
+- **Feature-gated heavy deps** — image/mesh filters, ffmpeg, hdf5, gdal, fontdue are all optional
 
-## License
+## Feature Flags
 
-Same as the original VTK
+```toml
+# Core filters only (12s build):
+vtk-filters = "0.1"
+
+# Add specific filter groups:
+vtk-filters = { version = "0.1", features = ["image", "mesh"] }
+
+# Everything:
+vtk-filters = { version = "0.1", features = ["all"] }
+
+# Optional system-library features:
+vtk-io-hdf5 = { version = "0.1", features = ["exodus", "cgns", "netcdf"] }
+vtk-io-gdal = { version = "0.1", features = ["gdal"] }
+vtk-io-video = { version = "0.1", features = ["ffmpeg"] }
+vtk-render = { version = "0.1", features = ["truetype"] }
+```

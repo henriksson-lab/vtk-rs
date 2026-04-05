@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 
-use vtk_data::{DataArray, PolyData};
+use vtk::data::{DataArray, PolyData};
 
 /// A Python-accessible PolyData mesh.
 #[pyclass(name = "PolyData")]
@@ -79,24 +79,24 @@ impl PyPolyData {
     }
 
     fn compute_normals(&self) -> Self {
-        Self { inner: vtk_filters::normals::compute_normals(&self.inner) }
+        Self { inner: vtk::filters::core::normals::compute_normals(&self.inner) }
     }
 
     fn triangulate(&self) -> Self {
-        Self { inner: vtk_filters::triangulate::triangulate(&self.inner) }
+        Self { inner: vtk::filters::core::triangulate::triangulate(&self.inner) }
     }
 
     fn elevation_z(&self) -> Self {
-        Self { inner: vtk_filters::elevation::elevation_z(&self.inner) }
+        Self { inner: vtk::filters::core::elevation::elevation_z(&self.inner) }
     }
 
     fn decimate(&self, target_reduction: f64) -> Self {
-        Self { inner: vtk_filters::decimate::decimate(&self.inner, target_reduction) }
+        Self { inner: vtk::filters::core::decimate::decimate(&self.inner, target_reduction) }
     }
 
     fn write_vtk(&self, path: &str) -> PyResult<()> {
         let p = std::path::Path::new(path);
-        vtk_io_legacy::LegacyWriter::ascii()
+        vtk::io::legacy::LegacyWriter::ascii()
             .write_poly_data(p, &self.inner)
             .map_err(|e| PyValueError::new_err(format!("{e}")))
     }
@@ -104,14 +104,14 @@ impl PyPolyData {
     #[staticmethod]
     fn read_vtk(path: &str) -> PyResult<Self> {
         let p = std::path::Path::new(path);
-        let pd = vtk_io_legacy::LegacyReader::read_poly_data(p)
+        let pd = vtk::io::legacy::LegacyReader::read_poly_data(p)
             .map_err(|e| PyValueError::new_err(format!("{e}")))?;
         Ok(Self { inner: pd })
     }
 
     fn write_stl(&self, path: &str) -> PyResult<()> {
         let p = std::path::Path::new(path);
-        vtk_io_stl::StlWriter::binary()
+        vtk::io::stl::StlWriter::binary()
             .write(p, &self.inner)
             .map_err(|e| PyValueError::new_err(format!("{e}")))
     }
@@ -119,7 +119,7 @@ impl PyPolyData {
     #[staticmethod]
     fn read_stl(path: &str) -> PyResult<Self> {
         let p = std::path::Path::new(path);
-        let pd = vtk_io_stl::StlReader::read(p)
+        let pd = vtk::io::stl::StlReader::read(p)
             .map_err(|e| PyValueError::new_err(format!("{e}")))?;
         Ok(Self { inner: pd })
     }
@@ -131,7 +131,7 @@ impl PyPolyData {
 
 #[pyfunction]
 fn sphere(theta_resolution: usize, phi_resolution: usize) -> PyPolyData {
-    use vtk_filters::sources::sphere::{sphere as make_sphere, SphereParams};
+    use vtk::filters::core::sources::sphere::{sphere as make_sphere, SphereParams};
     PyPolyData {
         inner: make_sphere(&SphereParams {
             theta_resolution,
@@ -143,13 +143,13 @@ fn sphere(theta_resolution: usize, phi_resolution: usize) -> PyPolyData {
 
 #[pyfunction]
 fn cube() -> PyPolyData {
-    use vtk_filters::sources::cube::{cube as make_cube, CubeParams};
+    use vtk::filters::core::sources::cube::{cube as make_cube, CubeParams};
     PyPolyData { inner: make_cube(&CubeParams::default()) }
 }
 
 #[pyfunction]
 fn cone() -> PyPolyData {
-    use vtk_filters::sources::cone::{cone as make_cone, ConeParams};
+    use vtk::filters::core::sources::cone::{cone as make_cone, ConeParams};
     PyPolyData { inner: make_cone(&ConeParams::default()) }
 }
 

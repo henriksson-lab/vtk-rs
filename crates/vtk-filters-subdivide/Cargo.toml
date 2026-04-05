@@ -1,7 +1,0 @@
-[package]
-name = "vtk-filters-subdivide"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-vtk-data = { path = "../vtk-data" }

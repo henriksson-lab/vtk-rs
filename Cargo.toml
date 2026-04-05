@@ -1,99 +1,11 @@
 [workspace]
 members = [
-    "crates/vtk-types",
-    "crates/vtk-data",
-    "crates/vtk-io-legacy",
-    "crates/vtk-io-stl",
-    "crates/vtk-io-obj",
-    "crates/vtk-filters",
-    "crates/vtk-render",
-    "crates/vtk-render-wgpu",
-    "crates/vtk-io-xml",
-    "crates/vtk-io-ply",
-    "crates/vtk-io-gltf",
-    "crates/vtk-io-ensight",
-    "crates/vtk-io-xdmf",
-    "crates/vtk-io-off",
-    "crates/vtk-io-dxf",
-    "crates/vtk-io-geojson",
-    "crates/vtk-io-csv",
-    "crates/vtk-io-byu",
-    "crates/vtk-io-las",
-    "crates/vtk-io-facet",
-    "crates/vtk-io-segy",
-    "crates/vtk-io-tecplot",
-    "crates/vtk-io-fits",
-    "crates/vtk-filters-image",
-    "crates/vtk-filters-mesh",
-    "crates/vtk-filters-extract",
-    "crates/vtk-filters-transform",
-    "crates/vtk-filters-subdivide",
-    "crates/vtk-filters-clip",
-    "crates/vtk-filters-smooth",
-    "crates/vtk-filters-cell",
-    "crates/vtk-filters-points",
-    "crates/vtk-filters-statistics",
-    "crates/vtk-filters-texture",
-    "crates/vtk-filters-flow",
-    "crates/vtk-filters-boolean",
-    "crates/vtk-filters-grid",
-    "crates/vtk-filters-data",
-    "crates/vtk-filters-distance",
-    "crates/vtk-filters-normals",
-    "crates/vtk-filters-geometry",
-    "crates/vtk-python",
     "crates/vtk",
-    "crates/vtk-filters-gpu",
-    "crates/vtk-io-dicom",
-    "crates/vtk-io-video",
-    "crates/vtk-io-hdf5",
-    "crates/vtk-parallel",
-    "crates/vtk-io-gdal",
+    "crates/vtk-python",
 ]
 resolver = "2"
 
 [workspace.dependencies]
-vtk-types = { path = "crates/vtk-types" }
-vtk-data = { path = "crates/vtk-data" }
-vtk-filters = { path = "crates/vtk-filters" }
-vtk-filters-image = { path = "crates/vtk-filters-image" }
-vtk-filters-mesh = { path = "crates/vtk-filters-mesh" }
-vtk-filters-extract = { path = "crates/vtk-filters-extract" }
-vtk-filters-transform = { path = "crates/vtk-filters-transform" }
-vtk-filters-subdivide = { path = "crates/vtk-filters-subdivide" }
-vtk-filters-clip = { path = "crates/vtk-filters-clip" }
-vtk-filters-smooth = { path = "crates/vtk-filters-smooth" }
-vtk-filters-cell = { path = "crates/vtk-filters-cell" }
-vtk-filters-points = { path = "crates/vtk-filters-points" }
-vtk-filters-statistics = { path = "crates/vtk-filters-statistics" }
-vtk-filters-texture = { path = "crates/vtk-filters-texture" }
-vtk-filters-flow = { path = "crates/vtk-filters-flow" }
-vtk-filters-boolean = { path = "crates/vtk-filters-boolean" }
-vtk-filters-grid = { path = "crates/vtk-filters-grid" }
-vtk-filters-data = { path = "crates/vtk-filters-data" }
-vtk-filters-distance = { path = "crates/vtk-filters-distance" }
-vtk-filters-normals = { path = "crates/vtk-filters-normals" }
-vtk-filters-geometry = { path = "crates/vtk-filters-geometry" }
-vtk-render = { path = "crates/vtk-render" }
-vtk-io-legacy = { path = "crates/vtk-io-legacy" }
-vtk-io-stl = { path = "crates/vtk-io-stl" }
-vtk-io-obj = { path = "crates/vtk-io-obj" }
-vtk-render-wgpu = { path = "crates/vtk-render-wgpu" }
-vtk-io-xml = { path = "crates/vtk-io-xml" }
-vtk-io-ply = { path = "crates/vtk-io-ply" }
-vtk-io-gltf = { path = "crates/vtk-io-gltf" }
-vtk-io-ensight = { path = "crates/vtk-io-ensight" }
-vtk-io-xdmf = { path = "crates/vtk-io-xdmf" }
-vtk-io-off = { path = "crates/vtk-io-off" }
-vtk-io-dxf = { path = "crates/vtk-io-dxf" }
-vtk-io-geojson = { path = "crates/vtk-io-geojson" }
-vtk-io-csv = { path = "crates/vtk-io-csv" }
-vtk-io-byu = { path = "crates/vtk-io-byu" }
-vtk-io-las = { path = "crates/vtk-io-las" }
-vtk-io-facet = { path = "crates/vtk-io-facet" }
-vtk-io-segy = { path = "crates/vtk-io-segy" }
-vtk-io-tecplot = { path = "crates/vtk-io-tecplot" }
-vtk-io-fits = { path = "crates/vtk-io-fits" }
 pyo3 = { version = "0.23", features = ["extension-module"] }
 rayon = "1.10"
 proptest = "1"
@@ -112,17 +24,7 @@ publish = false
 autobenches = false
 
 [dependencies]
-vtk-data = { workspace = true }
-vtk-filters = { workspace = true, features = ["all"] }
-vtk-io-legacy = { workspace = true }
-vtk-io-stl = { workspace = true }
-vtk-io-obj = { workspace = true }
-vtk-io-xml = { workspace = true }
-vtk-io-ply = { workspace = true }
-vtk-io-gltf = { workspace = true }
 vtk = { path = "crates/vtk" }
-vtk-render = { workspace = true }
-vtk-render-wgpu = { workspace = true }
 winit = { workspace = true }
 pollster = { workspace = true }
 
