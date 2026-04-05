@@ -1,32 +1,80 @@
-[workspace]
-members = [
-    "crates/vtk",
-    "crates/vtk-python",
-]
-resolver = "2"
-
-[workspace.dependencies]
-pyo3 = { version = "0.23", features = ["extension-module"] }
-rayon = "1.10"
-proptest = "1"
-thiserror = "2"
-bytemuck = { version = "1", features = ["derive"] }
-glam = "0.29"
-wgpu = "24"
-winit = "0.30"
-pollster = "0.4"
-
 [package]
-name = "vtk-rs-examples"
+name = "vtk"
 version = "0.1.0"
 edition = "2021"
-publish = false
+rust-version = "1.75"
+description = "Pure Rust visualization toolkit — data structures, filters, I/O, rendering"
+license = "BSD-3-Clause"
+repository = "https://github.com/henriksson/vtk-rs"
+homepage = "https://github.com/henriksson/vtk-rs"
+documentation = "https://docs.rs/vtk"
+readme = "README.md"
+keywords = ["vtk", "visualization", "mesh", "scientific", "3d"]
+categories = ["science", "graphics", "rendering::data-formats"]
+exclude = ["VTK/", "benches/", "scripts/"]
 autobenches = false
 
+[features]
+default = ["filters-core", "io-common"]
+
+# Filter tiers
+filters-core = []
+sources-extra = []
+filters-image = []
+filters-image-extra = ["filters-image"]
+filters-mesh = []
+filters-mesh-extra = ["filters-mesh"]
+filters-smooth = []
+filters-transform = []
+filters-subdivide = []
+filters-cell = []
+filters-statistics = []
+filters-texture = []
+filters-flow = []
+filters-boolean = []
+filters-grid = []
+filters-data = []
+filters-distance = []
+filters-gpu = []
+filters-all = [
+    "filters-core", "sources-extra",
+    "filters-image", "filters-image-extra",
+    "filters-mesh", "filters-mesh-extra",
+    "filters-smooth", "filters-transform", "filters-subdivide",
+    "filters-cell", "filters-statistics", "filters-texture",
+    "filters-flow", "filters-boolean", "filters-grid",
+    "filters-data", "filters-distance", "filters-gpu",
+]
+
+# I/O
+io-common = []
+io-all = ["io-common"]
+
+# Rendering
+render = []
+render-wgpu = ["render", "dep:wgpu", "dep:winit", "dep:pollster"]
+
+# Parallel
+parallel = []
+
+# Optional deps
+truetype = ["dep:fontdue"]
+
+# Everything
+full = ["filters-all", "io-all", "render-wgpu", "parallel"]
+
 [dependencies]
-vtk = { path = "crates/vtk" }
-winit = { workspace = true }
-pollster = { workspace = true }
+thiserror = "2"
+bytemuck = { version = "1", features = ["derive"] }
+rayon = "1.10"
+glam = "0.29"
+wgpu = { version = "24", optional = true }
+winit = { version = "0.30", optional = true }
+pollster = { version = "0.4", optional = true }
+fontdue = { version = "0.9", optional = true }
+
+[dev-dependencies]
+proptest = "1"
 
 [[example]]
 name = "triangle"
