@@ -23,7 +23,7 @@ cargo run --release --example bench_filters  # performance benchmarks
 The workspace has ~48 crates organized in layers:
 
 **Core:** `vtk-types` → `vtk-data` — foundational types and data model
-**Filters:** `vtk-filters` (main) + 20 split crates (`vtk-filters-image`, `vtk-filters-mesh`, `vtk-filters-extract`, `vtk-filters-transform`, `vtk-filters-subdivide`, `vtk-filters-clip`, `vtk-filters-smooth`, `vtk-filters-cell`, `vtk-filters-points`, `vtk-filters-statistics`, `vtk-filters-texture`, `vtk-filters-flow`, `vtk-filters-boolean`, `vtk-filters-grid`, `vtk-filters-data`, `vtk-filters-distance`, `vtk-filters-normals`, `vtk-filters-geometry`, `vtk-filters-image-2`, `vtk-filters-mesh-2`)
+**Filters:** `vtk-filters` (main) + 18 split crates (`vtk-filters-image`, `vtk-filters-mesh`, `vtk-filters-extract`, `vtk-filters-transform`, `vtk-filters-subdivide`, `vtk-filters-clip`, `vtk-filters-smooth`, `vtk-filters-cell`, `vtk-filters-points`, `vtk-filters-statistics`, `vtk-filters-texture`, `vtk-filters-flow`, `vtk-filters-boolean`, `vtk-filters-grid`, `vtk-filters-data`, `vtk-filters-distance`, `vtk-filters-normals`, `vtk-filters-geometry`) + `vtk-filters-gpu` (wgpu compute)
 **I/O:** `vtk-io-{legacy,stl,obj,xml,ply,off,dxf,geojson,csv,byu,las,facet,segy,tecplot,fits,gltf,ensight,xdmf}`
 **Rendering:** `vtk-render` (backend-agnostic) → `vtk-render-wgpu` (GPU backend)
 **Bindings:** `vtk-python` (PyO3)

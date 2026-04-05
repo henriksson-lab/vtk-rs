@@ -41,8 +41,6 @@ members = [
     "crates/vtk-filters-distance",
     "crates/vtk-filters-normals",
     "crates/vtk-filters-geometry",
-    "crates/vtk-filters-image-2",
-    "crates/vtk-filters-mesh-2",
     "crates/vtk-python",
     "crates/vtk",
     "crates/vtk-filters-gpu",
