@@ -1,6 +1,6 @@
 use crate::data::{CellArray, Points, PolyData};
-use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashSet};
+use std::cmp::Reverse;
 
 /// Simplify a triangle mesh using quadric error metrics (Garland-Heckbert).
 ///
@@ -18,6 +18,11 @@ pub fn edge_collapse_quadric(input: &PolyData, target_ratio: f64) -> PolyData {
         .map(|c| [c[0] as usize, c[1] as usize, c[2] as usize])
         .collect();
 
+    let num_tris = tris.len();
+    if num_tris == 0 || num_tris <= target {
+        return input.clone();
+    }
+
     // Compute per-vertex quadric matrices (symmetric 4x4 stored as 10 floats)
     let mut quadrics = vec![[0.0f64; 10]; n];
     for tri in &tris {
@@ -25,68 +30,152 @@ pub fn edge_collapse_quadric(input: &PolyData, target_ratio: f64) -> PolyData {
         for &v in tri { add_quadric(&mut quadrics[v], &q); }
     }
 
-    // Build edge set
-    let mut edges: HashSet<(usize, usize)> = HashSet::new();
-    for tri in &tris {
-        for k in 0..3 {
-            let a = tri[k]; let b = tri[(k+1)%3];
-            edges.insert(if a < b { (a,b) } else { (b,a) });
+    // Build per-vertex adjacency: vertex -> set of triangle indices
+    let mut adj: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+    for (ti, tri) in tris.iter().enumerate() {
+        for &v in tri {
+            adj[v].insert(ti);
         }
     }
 
-    // Merge map
-    let mut remap: Vec<usize> = (0..n).collect();
-    let find = |remap: &mut Vec<usize>, mut x: usize| -> usize {
-        while remap[x] != x { remap[x] = remap[remap[x]]; x = remap[x]; }
-        x
-    };
+    // Dead triangle bitmap
+    let mut dead = vec![false; num_tris];
 
-    let mut current_faces = tris.len();
+    // Version stamps per vertex (for lazy-deletion heap)
+    let mut version: Vec<u64> = vec![0; n];
 
-    // Greedy: sort edges by cost, collapse cheapest
-    let mut edge_list: Vec<(f64, usize, usize)> = edges.iter().map(|&(a,b)| {
-        let cost = edge_cost(&quadrics[a], &quadrics[b], &pts[a], &pts[b]);
-        (cost, a, b)
-    }).collect();
-    edge_list.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal));
+    // Build priority queue: (Reverse(cost), version_a, version_b, a, b)
+    let mut heap: BinaryHeap<(Reverse<u64>, u64, u64, usize, usize)> = BinaryHeap::new();
 
-    for &(_, a, b) in &edge_list {
-        if current_faces <= target { break; }
+    // Collect unique edges and seed the heap
+    {
+        let mut seen: HashSet<(usize, usize)> = HashSet::new();
+        for tri in &tris {
+            for k in 0..3 {
+                let a = tri[k];
+                let b = tri[(k + 1) % 3];
+                let edge = if a < b { (a, b) } else { (b, a) };
+                if seen.insert(edge) {
+                    let cost = edge_cost(&quadrics[a], &quadrics[b], &pts[a], &pts[b]);
+                    let cost_bits = cost.to_bits();
+                    heap.push((Reverse(cost_bits), version[edge.0], version[edge.1], edge.0, edge.1));
+                }
+            }
+        }
+    }
 
-        let ra = find(&mut remap, a);
-        let rb = find(&mut remap, b);
-        if ra == rb { continue; }
+    let mut current_faces = num_tris;
 
-        // Collapse rb into ra
-        let mid = [(pts[ra][0]+pts[rb][0])*0.5, (pts[ra][1]+pts[rb][1])*0.5, (pts[ra][2]+pts[rb][2])*0.5];
-        pts[ra] = mid;
-        let qb = quadrics[rb];
-        add_quadric(&mut quadrics[ra], &qb);
-        remap[rb] = ra;
+    while current_faces > target {
+        let entry = match heap.pop() {
+            Some(e) => e,
+            None => break,
+        };
+        let (_, va, vb, a, b) = entry;
 
-        // Count removed faces
-        let before = current_faces;
-        tris.retain(|tri| {
-            let v: Vec<usize> = tri.iter().map(|&v| find(&mut remap, v)).collect();
-            v[0] != v[1] && v[1] != v[2] && v[0] != v[2]
-        });
-        current_faces = tris.len();
+        // Stale entry check
+        if version[a] != va || version[b] != vb {
+            continue;
+        }
+        if a == b {
+            continue;
+        }
+
+        // Collapse edge (a, b) -> a
+        // Compute midpoint
+        let mid = [
+            (pts[a][0] + pts[b][0]) * 0.5,
+            (pts[a][1] + pts[b][1]) * 0.5,
+            (pts[a][2] + pts[b][2]) * 0.5,
+        ];
+        pts[a] = mid;
+
+        // Merge quadrics
+        let qb = quadrics[b];
+        add_quadric(&mut quadrics[a], &qb);
+
+        // Bump versions to invalidate stale heap entries
+        version[a] += 1;
+        version[b] += 1;
+
+        // Find triangles shared by both a and b (these become degenerate)
+        let shared: Vec<usize> = adj[a].intersection(&adj[b]).copied().collect();
+        for &ti in &shared {
+            if !dead[ti] {
+                dead[ti] = true;
+                current_faces -= 1;
+                // Remove this triangle from adjacency of all its vertices
+                for &v in &tris[ti] {
+                    if v != a && v != b {
+                        adj[v].remove(&ti);
+                    }
+                }
+            }
+        }
+
+        // Update triangles that reference b to reference a instead
+        let b_tris: Vec<usize> = adj[b].iter().copied().collect();
+        for ti in b_tris {
+            if dead[ti] { continue; }
+            let tri = &mut tris[ti];
+            for v in tri.iter_mut() {
+                if *v == b {
+                    *v = a;
+                }
+            }
+            // Check if triangle became degenerate after substitution
+            if tri[0] == tri[1] || tri[1] == tri[2] || tri[0] == tri[2] {
+                if !dead[ti] {
+                    dead[ti] = true;
+                    current_faces -= 1;
+                    for &v in &[tri[0], tri[1], tri[2]] {
+                        adj[v].remove(&ti);
+                    }
+                }
+            } else {
+                // Move triangle from b's adjacency to a's
+                adj[a].insert(ti);
+            }
+        }
+        adj[b].clear();
+
+        // Collect neighbors of a and re-insert edges into the heap
+        let neighbors: Vec<usize> = {
+            let mut nbrs = HashSet::new();
+            for &ti in &adj[a] {
+                if dead[ti] { continue; }
+                for &v in &tris[ti] {
+                    if v != a {
+                        nbrs.insert(v);
+                    }
+                }
+            }
+            nbrs.into_iter().collect()
+        };
+
+        for &nb in &neighbors {
+            let cost = edge_cost(&quadrics[a], &quadrics[nb], &pts[a], &pts[nb]);
+            let cost_bits = cost.to_bits();
+            heap.push((Reverse(cost_bits), version[a], version[nb], a, nb));
+        }
     }
 
     // Remap and compact
-    let mut pt_map: HashMap<usize, i64> = HashMap::new();
+    let mut pt_map = vec![usize::MAX; n];
     let mut out_points = Points::<f64>::new();
     let mut out_polys = CellArray::new();
 
-    for tri in &tris {
-        let mapped: Vec<i64> = tri.iter().map(|&v| {
-            let rv = find(&mut remap, v);
-            *pt_map.entry(rv).or_insert_with(|| {
-                let idx = out_points.len() as i64;
-                out_points.push(pts[rv]);
-                idx
-            })
-        }).collect();
+    for (ti, tri) in tris.iter().enumerate() {
+        if dead[ti] { continue; }
+        let mapped: [i64; 3] = std::array::from_fn(|k| {
+            let v = tri[k];
+            if pt_map[v] == usize::MAX {
+                let idx = out_points.len();
+                pt_map[v] = idx;
+                out_points.push(pts[v]);
+            }
+            pt_map[v] as i64
+        });
         out_polys.push_cell(&mapped);
     }
 

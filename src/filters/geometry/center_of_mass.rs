@@ -10,14 +10,15 @@ pub fn center_of_mass(input: &PolyData) -> [f64; 3] {
         return [0.0, 0.0, 0.0];
     }
 
+    let pts = input.points.as_flat_slice();
     let mut cx = 0.0;
     let mut cy = 0.0;
     let mut cz = 0.0;
     for i in 0..n {
-        let p = input.points.get(i);
-        cx += p[0];
-        cy += p[1];
-        cz += p[2];
+        let b = i * 3;
+        cx += pts[b];
+        cy += pts[b + 1];
+        cz += pts[b + 2];
     }
     let nf = n as f64;
     [cx / nf, cy / nf, cz / nf]

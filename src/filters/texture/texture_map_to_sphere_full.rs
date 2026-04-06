@@ -18,15 +18,16 @@ pub fn texture_map_to_sphere_full(
     let n = input.points.len();
     if n == 0 { return input.clone(); }
 
-    // Compute spherical coordinates
+    // Compute spherical coordinates using flat slice access
+    let pts = input.points.as_flat_slice();
     let mut phis: Vec<f64> = Vec::with_capacity(n);
     let mut thetas: Vec<f64> = Vec::with_capacity(n);
 
     for i in 0..n {
-        let p = input.points.get(i);
-        let dx = p[0] - center[0];
-        let dy = p[1] - center[1];
-        let dz = p[2] - center[2];
+        let b = i * 3;
+        let dx = pts[b] - center[0];
+        let dy = pts[b + 1] - center[1];
+        let dz = pts[b + 2] - center[2];
         let r = (dx*dx + dy*dy + dz*dz).sqrt();
         let theta = if r > 1e-15 { (dz / r).acos() } else { 0.0 };
         let phi = dy.atan2(dx);

@@ -63,18 +63,32 @@ pub fn validate(pd: &PolyData) -> ValidationReport {
         }
     }
 
-    // Check for duplicate points (within tolerance)
-    if n_pts <= 10000 {
-        let mut dupes = 0;
-        for i in 0..n_pts {
-            let pi = pd.points.get(i);
-            for j in (i + 1)..n_pts {
-                let pj = pd.points.get(j);
-                let d2 = (pi[0]-pj[0]).powi(2) + (pi[1]-pj[1]).powi(2) + (pi[2]-pj[2]).powi(2);
-                if d2 < 1e-20 {
-                    dupes += 1;
-                    break;
-                }
+    // Check for duplicate points using sorting-based approach (O(n log n))
+    if n_pts <= 100_000 {
+        let pts = pd.points.as_flat_slice();
+        // Sort point indices by quantized position for fast duplicate detection
+        let mut indices: Vec<u32> = (0..n_pts as u32).collect();
+        // Quantize to ~1e-10 resolution and sort by (x, y, z) as integer keys
+        let scale = 1e10;
+        indices.sort_unstable_by(|&a, &b| {
+            let ab = a as usize * 3;
+            let bb = b as usize * 3;
+            let ax = (pts[ab] * scale) as i64;
+            let bx = (pts[bb] * scale) as i64;
+            ax.cmp(&bx)
+                .then_with(|| ((pts[ab + 1] * scale) as i64).cmp(&((pts[bb + 1] * scale) as i64)))
+                .then_with(|| ((pts[ab + 2] * scale) as i64).cmp(&((pts[bb + 2] * scale) as i64)))
+        });
+
+        let mut dupes = 0usize;
+        for w in indices.windows(2) {
+            let ab = w[0] as usize * 3;
+            let bb = w[1] as usize * 3;
+            let d2 = (pts[ab] - pts[bb]) * (pts[ab] - pts[bb])
+                + (pts[ab + 1] - pts[bb + 1]) * (pts[ab + 1] - pts[bb + 1])
+                + (pts[ab + 2] - pts[bb + 2]) * (pts[ab + 2] - pts[bb + 2]);
+            if d2 < 1e-20 {
+                dupes += 1;
             }
         }
         report.duplicate_points = dupes;

@@ -9,47 +9,56 @@ use crate::data::{CellArray, Points, PolyData};
 pub fn shrink(input: &PolyData, factor: f64) -> PolyData {
     let factor = factor.clamp(0.0, 1.0);
 
-    let mut out_points = Points::<f64>::new();
-    let mut out_polys = CellArray::new();
+    let offsets = input.polys.offsets();
+    let conn = input.polys.connectivity();
+    let nc = input.polys.num_cells();
+    let pts = input.points.as_flat_slice();
 
-    for cell in input.polys.iter() {
-        if cell.is_empty() {
-            continue;
-        }
+    // Pre-allocated flat output: each cell vertex becomes a unique point.
+    // Uses raw offsets/connectivity for zero-overhead cell traversal.
+    let total_out_pts = conn.len();
+    let mut out_flat = Vec::with_capacity(total_out_pts * 3);
+    let mut out_off = Vec::with_capacity(nc + 1);
+    let mut out_conn = Vec::with_capacity(total_out_pts);
+    out_off.push(0i64);
+
+    let mut pt_idx: i64 = 0;
+
+    for ci in 0..nc {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        let n = (end - start) as f64;
+        if n < 1.0 { continue; }
 
         // Compute centroid
-        let mut cx = 0.0;
-        let mut cy = 0.0;
-        let mut cz = 0.0;
-        for &id in cell {
-            let p = input.points.get(id as usize);
-            cx += p[0];
-            cy += p[1];
-            cz += p[2];
+        let mut cx = 0.0f64;
+        let mut cy = 0.0f64;
+        let mut cz = 0.0f64;
+        for idx in start..end {
+            let b = conn[idx] as usize * 3;
+            cx += pts[b];
+            cy += pts[b + 1];
+            cz += pts[b + 2];
         }
-        let n = cell.len() as f64;
         cx /= n;
         cy /= n;
         cz /= n;
 
-        // Create new vertices, moved toward centroid
-        let base = out_points.len() as i64;
-        let mut ids = Vec::with_capacity(cell.len());
-        for &id in cell {
-            let p = input.points.get(id as usize);
-            out_points.push([
-                cx + factor * (p[0] - cx),
-                cy + factor * (p[1] - cy),
-                cz + factor * (p[2] - cz),
-            ]);
-            ids.push(base + ids.len() as i64);
+        // Create new vertices
+        for idx in start..end {
+            let b = conn[idx] as usize * 3;
+            out_flat.push(cx + factor * (pts[b] - cx));
+            out_flat.push(cy + factor * (pts[b + 1] - cy));
+            out_flat.push(cz + factor * (pts[b + 2] - cz));
+            out_conn.push(pt_idx);
+            pt_idx += 1;
         }
-        out_polys.push_cell(&ids);
+        out_off.push(pt_idx);
     }
 
     let mut pd = PolyData::new();
-    pd.points = out_points;
-    pd.polys = out_polys;
+    pd.points = Points::from_flat_vec(out_flat);
+    pd.polys = CellArray::from_raw(out_off, out_conn);
     pd
 }
 

@@ -17,9 +17,11 @@ pub fn marching_cubes(image: &ImageData, scalars: &[f64], iso_value: f64) -> Pol
     let sp = image.spacing();
     let org = image.origin();
 
-    let mut pts_flat: Vec<f64> = Vec::new();
-    let mut nrm_flat: Vec<f64> = Vec::new();
-    let mut conn: Vec<i64> = Vec::new();
+    // Pre-allocate output buffers (estimate ~2% of voxels produce triangles)
+    let est = ((dims[0]-1) * (dims[1]-1) * (dims[2]-1)) / 50 + 64;
+    let mut pts_flat: Vec<f64> = Vec::with_capacity(est * 9);
+    let mut nrm_flat: Vec<f64> = Vec::with_capacity(est * 9);
+    let mut conn: Vec<i64> = Vec::with_capacity(est * 3);
 
     // Iterate over all cells (voxels)
     for k in 0..dims[2] - 1 {

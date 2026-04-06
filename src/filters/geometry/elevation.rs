@@ -18,24 +18,22 @@ pub fn elevation(
         high_point[2] - low_point[2],
     ];
     let len2 = dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2];
+    let inv_len2 = if len2 > 1e-20 { 1.0 / len2 } else { 0.0 };
 
-    let mut scalars = DataArray::<f64>::new("Elevation", 1);
+    // Direct flat slice access + precomputed inverse avoids per-point overhead.
+    let pts = input.points.as_flat_slice();
+    let n = input.points.len();
+    let mut values = Vec::with_capacity(n);
 
-    for i in 0..input.num_points() {
-        let p = input.point(i);
-        let dp = [
-            p[0] - low_point[0],
-            p[1] - low_point[1],
-            p[2] - low_point[2],
-        ];
-        let t = if len2 > 1e-20 {
-            (dp[0] * dir[0] + dp[1] * dir[1] + dp[2] * dir[2]) / len2
-        } else {
-            0.0
-        };
-        scalars.push_tuple(&[t]);
+    for i in 0..n {
+        let base = i * 3;
+        let dx = pts[base]     - low_point[0];
+        let dy = pts[base + 1] - low_point[1];
+        let dz = pts[base + 2] - low_point[2];
+        values.push((dx * dir[0] + dy * dir[1] + dz * dir[2]) * inv_len2);
     }
 
+    let scalars = DataArray::<f64>::from_vec("Elevation", values, 1);
     output.point_data_mut().add_array(scalars.into());
     output.point_data_mut().set_active_scalars("Elevation");
     output

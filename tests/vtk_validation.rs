@@ -1396,3 +1396,657 @@ fn mass_properties_centroid_at_origin() {
     assert!(m.center[1].abs() < 0.01, "centroid y should be ~0", );
     assert!(m.center[2].abs() < 0.01, "centroid z should be ~0");
 }
+
+// ==================== ROUND 5: MORE CORRECTNESS TESTS ====================
+
+fn tri_sphere() -> PolyData {
+    vtk_pure_rs::filters::geometry::triangulate::triangulate(&test_sphere())
+}
+
+// --- Boolean ---
+
+#[test]
+fn filter_boolean_union_increases_cells() {
+    use vtk_pure_rs::filters::boolean::boolean::{boolean, BooleanOp};
+    let a = tri_sphere();
+    let b = vtk_pure_rs::filters::geometry::triangulate::triangulate(
+        &sphere(&SphereParams { center: [0.3, 0.0, 0.0], theta_resolution: 16, phi_resolution: 16, ..Default::default() }));
+    let result = boolean(&a, &b, BooleanOp::Union);
+    assert!(result.polys.num_cells() > 0, "boolean union should produce cells");
+}
+
+#[test]
+fn filter_boolean_intersection_smaller() {
+    use vtk_pure_rs::filters::boolean::boolean::{boolean, BooleanOp};
+    let a = tri_sphere();
+    let b = vtk_pure_rs::filters::geometry::triangulate::triangulate(
+        &sphere(&SphereParams { center: [0.3, 0.0, 0.0], theta_resolution: 32, phi_resolution: 32, ..Default::default() }));
+    let result = boolean(&a, &b, BooleanOp::Intersection);
+    assert!(result.polys.num_cells() > 0);
+    assert!(result.polys.num_cells() < a.polys.num_cells(), "intersection should have fewer cells");
+}
+
+// --- Mirror ---
+
+#[test]
+fn filter_mirror_doubles_cells() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::transform::mirror::mirror(&pd, 0, true);
+    assert_eq!(result.polys.num_cells(), pd.polys.num_cells() * 2,
+        "mirror with merge should double cell count");
+}
+
+#[test]
+fn filter_mirror_preserves_cells() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::transform::mirror::mirror(&pd, 0, false);
+    assert_eq!(result.polys.num_cells(), pd.polys.num_cells(),
+        "mirror without merge should have same cell count");
+}
+
+// --- Reflect ---
+
+#[test]
+fn filter_reflect_doubles_points() {
+    use vtk_pure_rs::filters::transform::reflect::*;
+    let pd = tri_sphere();
+    let result = reflect(&pd, &ReflectParams { plane: ReflectPlane::X, copy_input: true, ..Default::default() });
+    assert!(result.points.len() >= pd.points.len() * 2 - 10, // some shared on axis
+        "reflect+copy should roughly double points");
+}
+
+// --- Extrude ---
+
+#[test]
+fn filter_extrude_creates_volume() {
+    use vtk_pure_rs::filters::core::sources::plane::{plane, PlaneParams};
+    let p = plane(&PlaneParams { x_resolution: 5, y_resolution: 5, ..Default::default() });
+    let result = vtk_pure_rs::filters::transform::extrude::extrude(&p, [0.0, 0.0, 1.0], true);
+    assert!(result.polys.num_cells() > p.polys.num_cells(),
+        "extrude should create more faces than input");
+    assert!(result.points.len() > p.points.len(),
+        "extrude should create more points");
+}
+
+// --- Subdivide butterfly ---
+
+#[test]
+fn filter_subdivide_butterfly_quadruples() {
+    let pd = tri_sphere();
+    let nc = pd.polys.num_cells();
+    let result = vtk_pure_rs::filters::subdivide::subdivide_butterfly::subdivide_butterfly(&pd);
+    // Each triangle becomes 4
+    assert!((result.polys.num_cells() as f64 / nc as f64 - 4.0).abs() < 0.5,
+        "butterfly should ~4x cells: got {} from {}", result.polys.num_cells(), nc);
+}
+
+// --- Catmull-Clark ---
+
+#[test]
+fn filter_catmull_clark_increases_cells() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::subdivide::catmull_clark::catmull_clark(&pd);
+    assert!(result.polys.num_cells() > pd.polys.num_cells(),
+        "catmull-clark should increase cell count");
+}
+
+// --- Cell quality ---
+
+#[test]
+fn filter_cell_quality_adds_array() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::cell::cell_quality::cell_quality(
+        &pd, vtk_pure_rs::filters::cell::cell_quality::QualityMetric::AspectRatio);
+    assert!(result.cell_data().get_array("Quality").is_some(),
+        "cell_quality should add Quality array");
+    let arr = result.cell_data().get_array("Quality").unwrap();
+    assert_eq!(arr.num_tuples(), pd.polys.num_cells());
+}
+
+// --- Cell size ---
+
+#[test]
+fn filter_cell_size_adds_array() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::cell::cell_size::cell_size(&pd);
+    assert!(result.cell_data().get_array("CellSize").is_some(),
+        "cell_size should add CellSize array");
+    // All areas should be positive
+    let arr = result.cell_data().get_array("CellSize").unwrap();
+    let mut buf = [0.0f64];
+    for i in 0..arr.num_tuples() {
+        arr.tuple_as_f64(i, &mut buf);
+        assert!(buf[0] >= 0.0, "cell area should be non-negative");
+    }
+}
+
+// --- Fill holes ---
+
+#[test]
+fn filter_fill_holes_closes_mesh() {
+    // Create an open mesh by removing some triangles from a sphere
+    let pd = tri_sphere();
+    let clipped = vtk_pure_rs::filters::clip::clip::clip_by_plane(&pd, [0.0,0.0,0.0], [0.0,0.0,1.0]);
+    let nc_before = clipped.polys.num_cells();
+    if nc_before == 0 { return; } // skip if clip produced empty mesh
+    let result = vtk_pure_rs::filters::cell::fill_holes::fill_holes(&clipped);
+    assert!(result.polys.num_cells() >= nc_before,
+        "fill_holes should not lose cells: {} -> {}", nc_before, result.polys.num_cells());
+}
+
+// --- Collision detection ---
+
+#[test]
+fn filter_collision_detects_overlap() {
+    let a = tri_sphere();
+    let b = vtk_pure_rs::filters::geometry::triangulate::triangulate(
+        &sphere(&SphereParams { center: [0.5, 0.0, 0.0], theta_resolution: 16, phi_resolution: 16, ..Default::default() }));
+    let result = vtk_pure_rs::filters::distance::collision_detection::collision_detection(&a, &b);
+    assert!(result.collides, "overlapping spheres should collide");
+    assert!(result.num_contacts > 0);
+}
+
+#[test]
+fn filter_collision_no_overlap() {
+    let a = tri_sphere();
+    let b = vtk_pure_rs::filters::geometry::triangulate::triangulate(
+        &sphere(&SphereParams { center: [5.0, 0.0, 0.0], theta_resolution: 8, phi_resolution: 8, ..Default::default() }));
+    let result = vtk_pure_rs::filters::distance::collision_detection::collision_detection(&a, &b);
+    assert!(!result.collides, "distant spheres should not collide");
+}
+
+// --- Hausdorff distance ---
+
+#[test]
+fn filter_hausdorff_identical_zero() {
+    let pd = test_sphere();
+    let (h, _, _) = vtk_pure_rs::filters::distance::hausdorff::hausdorff_distance(&pd, &pd);
+    assert!(h < 1e-10, "hausdorff of identical sets should be 0, got {h}");
+}
+
+#[test]
+fn filter_hausdorff_shifted() {
+    let a = test_sphere();
+    let b = sphere(&SphereParams { center: [0.1, 0.0, 0.0], theta_resolution: 32, phi_resolution: 32, ..Default::default() });
+    let (h, _, _) = vtk_pure_rs::filters::distance::hausdorff::hausdorff_distance(&a, &b);
+    assert!((h - 0.1).abs() < 0.02, "hausdorff of 0.1-shifted spheres should be ~0.1, got {h}");
+}
+
+// --- Surface nets ---
+
+#[test]
+fn filter_surface_nets_produces_mesh() {
+    let img = ImageData::with_dimensions(16, 16, 16);
+    let mut v = Vec::with_capacity(16*16*16);
+    for k in 0..16i32 { for j in 0..16i32 { for i in 0..16i32 {
+        v.push(((i-8)*(i-8)+(j-8)*(j-8)+(k-8)*(k-8)) as f64);
+    }}}
+    let mut img2 = img.clone();
+    img2.point_data_mut().add_array(AnyDataArray::F64(
+        vtk_pure_rs::data::DataArray::from_vec("values", v, 1)));
+    let result = vtk_pure_rs::filters::geometry::surface_nets::surface_nets(&img2, "values", 25.0);
+    assert!(result.points.len() > 10, "surface nets should produce points");
+    assert!(result.polys.num_cells() > 5, "surface nets should produce cells");
+}
+
+// --- Topology analysis ---
+
+#[test]
+fn filter_topology_closed_sphere() {
+    let pd = tri_sphere();
+    let info = vtk_pure_rs::filters::core::topology::analyze_topology(&pd);
+    assert!(info.is_closed, "triangulated sphere should be closed");
+    assert!(info.is_manifold, "triangulated sphere should be manifold");
+    assert_eq!(info.num_boundary_edges, 0, "closed mesh should have no boundary edges");
+    assert!(info.is_triangle_mesh, "should be triangle mesh");
+}
+
+#[test]
+fn filter_topology_open_mesh() {
+    let pd = tri_sphere();
+    let clipped = vtk_pure_rs::filters::clip::clip::clip_by_plane(&pd, [0.0,0.0,0.0], [1.0,0.0,0.0]);
+    let info = vtk_pure_rs::filters::core::topology::analyze_topology(&clipped);
+    assert!(!info.is_closed, "clipped sphere should be open");
+    assert!(info.num_boundary_edges > 0, "open mesh should have boundary edges");
+}
+
+// --- Outline ---
+
+#[test]
+fn filter_outline_12_edges() {
+    let pd = test_sphere();
+    let result = vtk_pure_rs::filters::distance::outline::outline(&pd);
+    assert_eq!(result.points.len(), 8, "bounding box should have 8 corners");
+    assert_eq!(result.lines.num_cells(), 12, "bounding box should have 12 edges");
+}
+
+// --- Quadric clustering ---
+
+#[test]
+fn filter_quadric_clustering_reduces() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::geometry::quadric_clustering::quadric_clustering(&pd, 5);
+    assert!(result.polys.num_cells() < pd.polys.num_cells(),
+        "quadric clustering should reduce cells: {} -> {}", pd.polys.num_cells(), result.polys.num_cells());
+    assert!(result.points.len() > 0);
+}
+
+// --- Quadric edge collapse ---
+
+#[test]
+fn filter_quadric_decimate_reduces() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::geometry::edge_collapse_quadric::edge_collapse_quadric(&pd, 0.5);
+    let expected = (pd.polys.num_cells() as f64 * 0.5) as usize;
+    assert!(result.polys.num_cells() <= expected + expected / 5,
+        "quadric decimate 50% should halve cells: {} -> {} (target {})", pd.polys.num_cells(), result.polys.num_cells(), expected);
+}
+
+// --- Slice ---
+
+#[test]
+fn filter_slice_produces_lines() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::core::slice::slice_by_plane(&pd, [0.0,0.0,0.0], [1.0,0.0,0.0]);
+    assert!(result.lines.num_cells() > 5, "slicing sphere should produce line segments");
+    assert!(result.points.len() > 5, "slicing sphere should produce points");
+}
+
+// --- Clip closed surface ---
+
+#[test]
+fn filter_clip_closed_caps() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::clip::clip_closed_surface::clip_closed_surface(&pd, [0.0,0.0,0.0], [1.0,0.0,0.0]);
+    assert!(result.polys.num_cells() > 0, "clip_closed should produce cells");
+    // Should be roughly half + cap
+    assert!(result.polys.num_cells() < pd.polys.num_cells());
+}
+
+// --- Gradient ---
+
+#[test]
+fn filter_gradient_adds_array() {
+    let pd = test_sphere();
+    let with_elev = vtk_pure_rs::filters::geometry::elevation::elevation_z(&pd);
+    let result = vtk_pure_rs::filters::geometry::gradient::gradient(&with_elev, "Elevation");
+    assert!(result.point_data().get_array("Gradient").is_some()
+        || result.cell_data().get_array("Gradient").is_some(),
+        "gradient should add Gradient array");
+}
+
+// --- Depth sort ---
+
+#[test]
+fn filter_depth_sort_preserves_cells() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::geometry::depth_peeling::depth_sort_mesh(&pd, [0.0, 0.0, 1.0]);
+    assert_eq!(result.polys.num_cells(), pd.polys.num_cells(),
+        "depth sort should preserve cell count");
+    assert!(result.cell_data().get_array("Depth").is_some());
+}
+
+// --- Triangle strips ---
+
+#[test]
+fn filter_triangle_strips_conversion() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::cell::strip::to_triangle_strips(&pd);
+    assert!(result.strips.num_cells() > 0, "should produce strip cells");
+    assert_eq!(result.polys.num_cells(), 0, "should convert all polys to strips");
+}
+
+// --- Dihedral angles ---
+
+#[test]
+fn filter_dihedral_angles_adds_array() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::geometry::angle_between::dihedral_angles(&pd);
+    let arr = result.cell_data().get_array("DihedralAngle");
+    assert!(arr.is_some(), "should add DihedralAngle array");
+    assert_eq!(arr.unwrap().num_tuples(), pd.polys.num_cells());
+}
+
+// --- Extract largest ---
+
+#[test]
+fn filter_extract_largest_one_component() {
+    let s1 = tri_sphere();
+    let s2 = vtk_pure_rs::filters::geometry::triangulate::triangulate(
+        &sphere(&SphereParams { center: [3.0, 0.0, 0.0], theta_resolution: 8, phi_resolution: 8, ..Default::default() }));
+    let merged = vtk_pure_rs::filters::core::append::append(&[&s1, &s2]);
+    let result = vtk_pure_rs::filters::core::extract_largest::extract_largest(&merged);
+    // Largest should be the big sphere
+    assert!(result.polys.num_cells() > s2.polys.num_cells(),
+        "extract_largest should return the bigger component");
+    assert!(result.polys.num_cells() <= s1.polys.num_cells() + 10);
+}
+
+// --- Densify ---
+
+#[test]
+fn filter_densify_increases_cells() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::subdivide::densify::densify(&pd, 0.05);
+    assert!(result.polys.num_cells() >= pd.polys.num_cells(),
+        "densify should not reduce cells");
+}
+
+// --- Separate cells ---
+
+#[test]
+fn filter_separate_cells_increases_points() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::cell::separate_cells::separate_cells(&pd);
+    // Every cell gets its own copy of vertices
+    assert!(result.points.len() >= pd.polys.num_cells() * 3,
+        "separate_cells should give each cell unique vertices");
+}
+
+// --- Calculator ---
+
+#[test]
+fn filter_calculator_adds_scalar() {
+    let pd = test_sphere();
+    let result = vtk_pure_rs::filters::geometry::calculator::calculator(&pd, "Radius", |_i, p, _| {
+        (p[0]*p[0] + p[1]*p[1] + p[2]*p[2]).sqrt()
+    });
+    let arr = result.point_data().get_array("Radius");
+    assert!(arr.is_some(), "calculator should add Radius array");
+    // For a sphere of radius 0.5, all values should be ~0.5
+    let arr = arr.unwrap();
+    let mut buf = [0.0f64];
+    arr.tuple_as_f64(0, &mut buf);
+    assert!((buf[0] - 0.5).abs() < 0.05, "radius at point 0 should be ~0.5, got {}", buf[0]);
+}
+
+// --- BYU I/O ---
+
+#[test]
+fn io_byu_roundtrip() {
+    let pd = tri_sphere();
+    let path = std::env::temp_dir().join(format!("vtk_val_byu_{:?}.byu", std::thread::current().id()));
+    vtk_pure_rs::io::byu::write_byu_file(&pd, &path).unwrap();
+    let loaded = vtk_pure_rs::io::byu::read_byu_file(&path).unwrap();
+    assert_eq!(loaded.polys.num_cells(), pd.polys.num_cells(), "BYU roundtrip should preserve cells");
+    let _ = std::fs::remove_file(&path);
+}
+
+// --- Center of mass ---
+
+#[test]
+fn filter_center_of_mass_at_origin() {
+    let pd = test_sphere();
+    let com = vtk_pure_rs::filters::geometry::center_of_mass::center_of_mass(&pd);
+    assert!(com[0].abs() < 0.01, "center of mass x should be ~0, got {}", com[0]);
+    assert!(com[1].abs() < 0.01, "center of mass y should be ~0");
+    assert!(com[2].abs() < 0.01, "center of mass z should be ~0");
+}
+
+// --- Signed distance ---
+
+#[test]
+fn filter_probe_interpolates() {
+    let pd = test_sphere();
+    let with_elev = vtk_pure_rs::filters::geometry::elevation::elevation_z(&pd);
+    let mut probe_pts = PolyData::new();
+    probe_pts.points = Points::from_vec(vec![[0.0, 0.0, 0.0], [0.0, 0.0, 0.25]]);
+    let result = vtk_pure_rs::filters::geometry::probe::probe(&with_elev, &probe_pts);
+    assert_eq!(result.points.len(), 2);
+}
+
+#[test]
+fn filter_validate_closed_sphere() {
+    let pd = tri_sphere();
+    let report = vtk_pure_rs::filters::geometry::validate::validate(&pd);
+    assert_eq!(report.degenerate_cells, 0, "sphere should have no degenerate cells");
+}
+
+#[test]
+fn filter_windowed_sinc_smooth() {
+    let pd = test_sphere();
+    let result = vtk_pure_rs::filters::smooth::windowed_sinc_smooth::windowed_sinc_smooth(&pd, 20, 0.1);
+    assert_eq!(result.points.len(), pd.points.len(), "windowed sinc should preserve point count");
+}
+
+#[test]
+fn filter_mask_points_reduces() {
+    let pd = test_sphere();
+    let result = vtk_pure_rs::filters::extract::mask_points::mask_points(&pd, 3);
+    assert!(result.points.len() < pd.points.len(), "mask_points should reduce points");
+    let expected = (pd.points.len() + 2) / 3;
+    assert!((result.points.len() as i64 - expected as i64).abs() <= 2);
+}
+
+#[test]
+fn filter_silhouette_produces_edges() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::geometry::poly_data_silhouette::silhouette_edges(&pd, [0.0, 0.0, 1.0]);
+    assert!(result.lines.num_cells() > 0, "silhouette should produce edges");
+}
+
+#[test]
+fn filter_hedgehog_produces_lines() {
+    let pd = test_sphere();
+    let with_normals = vtk_pure_rs::filters::normals::normals::compute_normals(&pd);
+    let result = vtk_pure_rs::filters::geometry::hedgehog::hedgehog(&with_normals, "Normals", 0.1);
+    assert!(result.lines.num_cells() > 0, "hedgehog should produce line glyphs");
+    assert_eq!(result.lines.num_cells(), pd.points.len(), "one line per point");
+}
+
+#[test]
+fn filter_voronoi_2d_produces_cells() {
+    let mut rng: u64 = 42;
+    let mut rf = || -> f64 {
+        rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1);
+        ((rng >> 33) as f64) / (u32::MAX as f64) * 2.0 - 1.0
+    };
+    let pts: Vec<[f64;3]> = (0..50).map(|_| [rf(), rf(), 0.0]).collect();
+    let mut pd = PolyData::new();
+    pd.points = Points::from_vec(pts);
+    let result = vtk_pure_rs::filters::geometry::voronoi_2d::voronoi_2d(&pd, 0.5);
+    assert!(result.polys.num_cells() > 0, "voronoi should produce cells");
+}
+
+#[test]
+fn filter_point_cloud_density_adds_scalar() {
+    let pd = test_sphere();
+    let result = vtk_pure_rs::filters::points::point_cloud_density::point_cloud_density(&pd, 0.1);
+    assert!(result.point_data().get_array("Density").is_some()
+        || result.point_data().get_array("PointDensity").is_some()
+        || result.point_data().num_arrays() > pd.point_data().num_arrays(),
+        "density should add an array");
+}
+
+#[test]
+fn filter_euclidean_cluster_separates() {
+    let s1 = tri_sphere();
+    let s2 = vtk_pure_rs::filters::geometry::triangulate::triangulate(
+        &sphere(&SphereParams { center: [5.0, 0.0, 0.0], theta_resolution: 8, phi_resolution: 8, ..Default::default() }));
+    let merged = vtk_pure_rs::filters::core::append::append(&[&s1, &s2]);
+    let result = vtk_pure_rs::filters::points::euclidean_cluster::euclidean_cluster(&merged, 0.5, 3);
+    assert!(result.point_data().get_array("ClusterId").is_some()
+        || result.point_data().scalars().is_some(),
+        "euclidean_cluster should add cluster labels");
+}
+
+#[test]
+fn filter_ruled_surface_from_lines() {
+    use vtk_pure_rs::filters::core::sources::line::{line, LineParams};
+    let l1 = line(&LineParams { point1: [0.0,0.0,0.0], point2: [1.0,0.0,0.0], resolution: 5 });
+    let l2 = line(&LineParams { point1: [0.0,1.0,0.0], point2: [1.0,1.0,0.5], resolution: 5 });
+    let mut pd = PolyData::new();
+    pd.points = l1.points.clone();
+    for i in 0..l2.points.len() { pd.points.push(l2.points.get(i)); }
+    let off = l1.points.len() as i64;
+    for cell in l1.lines.iter() { pd.lines.push_cell(cell); }
+    for cell in l2.lines.iter() {
+        let shifted: Vec<i64> = cell.iter().map(|&v| v + off).collect();
+        pd.lines.push_cell(&shifted);
+    }
+    let result = vtk_pure_rs::filters::geometry::ruled_surface::ruled_surface(&pd);
+    assert!(result.polys.num_cells() > 0, "ruled surface should produce quads/tris");
+}
+
+#[test]
+fn io_off_roundtrip() {
+    let pd = tri_sphere();
+    let path = std::env::temp_dir().join(format!("vtk_val_off_{:?}.off", std::thread::current().id()));
+    vtk_pure_rs::io::off::write_off_file(&pd, &path).unwrap();
+    let loaded = vtk_pure_rs::io::off::read_off_file(&path).unwrap();
+    assert_eq!(loaded.polys.num_cells(), pd.polys.num_cells(), "OFF roundtrip cells");
+    assert_eq!(loaded.points.len(), pd.points.len(), "OFF roundtrip points");
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn io_dxf_roundtrip() {
+    let pd = tri_sphere();
+    let path = std::env::temp_dir().join(format!("vtk_val_dxf_{:?}.dxf", std::thread::current().id()));
+    vtk_pure_rs::io::dxf::write_dxf_file(&pd, &path).unwrap();
+    let loaded = vtk_pure_rs::io::dxf::read_dxf_file(&path).unwrap();
+    assert!(loaded.polys.num_cells() > 0, "DXF roundtrip should produce cells");
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn io_facet_roundtrip() {
+    let pd = tri_sphere();
+    let path = std::env::temp_dir().join(format!("vtk_val_facet_{:?}.facet", std::thread::current().id()));
+    vtk_pure_rs::io::facet::write_facet_file(&pd, &path).unwrap();
+    let loaded = vtk_pure_rs::io::facet::read_facet_file(&path).unwrap();
+    assert_eq!(loaded.polys.num_cells(), pd.polys.num_cells(), "FACET roundtrip cells");
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn filter_interpolate_idw() {
+    let pd = test_sphere();
+    let with_elev = vtk_pure_rs::filters::geometry::elevation::elevation_z(&pd);
+    let mut target = PolyData::new();
+    target.points = Points::from_vec(vec![[0.0, 0.0, 0.0], [0.25, 0.0, 0.0]]);
+    let result = vtk_pure_rs::filters::geometry::interpolate::interpolate_idw(&with_elev, &target, 2.0, 0.5);
+    assert_eq!(result.points.len(), 2);
+}
+
+#[test]
+fn filter_poisson_disk_subsamples() {
+    let pd = test_sphere();
+    let result = vtk_pure_rs::filters::points::poisson_disk::poisson_disk_sample(&pd, 0.1, 42);
+    assert!(result.points.len() > 0, "poisson disk should produce points");
+    assert!(result.points.len() < pd.points.len(), "poisson disk should subsample");
+}
+
+#[test]
+fn io_vtp_roundtrip_cells() {
+    let pd = tri_sphere();
+    let path = std::env::temp_dir().join(format!("vtk_val_vtp_{:?}.vtp", std::thread::current().id()));
+    vtk_pure_rs::io::xml::VtpWriter::write(&path, &pd).unwrap();
+    let loaded = vtk_pure_rs::io::xml::VtpReader::read(&path).unwrap();
+    assert_eq!(loaded.polys.num_cells(), pd.polys.num_cells(), "VTP roundtrip cells");
+    assert_eq!(loaded.points.len(), pd.points.len(), "VTP roundtrip points");
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn filter_decimate_90_reduces_heavily() {
+    let pd = tri_sphere();
+    let result = vtk_pure_rs::filters::core::decimate::decimate(&pd, 0.9);
+    let target = (pd.polys.num_cells() as f64 * 0.1) as usize;
+    assert!(result.polys.num_cells() < pd.polys.num_cells() / 3,
+        "decimate 90% should heavily reduce: {} -> {} (target ~{})", pd.polys.num_cells(), result.polys.num_cells(), target);
+}
+
+#[test]
+fn filter_smooth_constrained_preserves_count() {
+    let pd = test_sphere();
+    let result = vtk_pure_rs::filters::smooth::smooth::smooth(&pd, 20, 0.5, false);
+    assert_eq!(result.points.len(), pd.points.len());
+    assert_eq!(result.polys.num_cells(), pd.polys.num_cells());
+}
+
+#[test]
+fn filter_glyph_100_correct_count() {
+    let mut seeds = PolyData::new();
+    seeds.points = Points::from_vec((0..100).map(|i| [i as f64 * 0.05, 0.0, 0.0]).collect());
+    let g = sphere(&SphereParams { radius: 0.02, theta_resolution: 6, phi_resolution: 6, ..Default::default() });
+    let nc_per_glyph = g.polys.num_cells();
+    let result = vtk_pure_rs::filters::geometry::glyph::glyph(&seeds, &g, 1.0, false);
+    assert_eq!(result.polys.num_cells(), 100 * nc_per_glyph,
+        "100 glyphs should produce 100 * {} = {} cells", nc_per_glyph, 100 * nc_per_glyph);
+}
+
+#[test]
+fn filter_subdivide_midpoint_quadruples() {
+    let pd = tri_sphere();
+    let nc = pd.polys.num_cells();
+    let result = vtk_pure_rs::filters::subdivide::subdivide_midpoint::subdivide_midpoint(&pd);
+    assert!((result.polys.num_cells() as f64 / nc as f64 - 4.0).abs() < 0.5,
+        "midpoint subdivide should ~4x cells: {} -> {}", nc, result.polys.num_cells());
+}
+
+#[test]
+fn filter_cell_data_to_point_data_roundtrip() {
+    let pd = test_sphere();
+    let with_elev = vtk_pure_rs::filters::geometry::elevation::elevation_z(&pd);
+    let with_cell = vtk_pure_rs::filters::filter_data::attribute_convert::point_data_to_cell_data(&with_elev);
+    let back = vtk_pure_rs::filters::filter_data::attribute_convert::cell_data_to_point_data(&with_cell);
+    assert_eq!(back.points.len(), pd.points.len());
+}
+
+#[test]
+fn filter_append_10_correct_total() {
+    let spheres: Vec<_> = (0..10).map(|_|
+        sphere(&SphereParams { theta_resolution: 8, phi_resolution: 8, ..Default::default() })
+    ).collect();
+    let refs: Vec<&PolyData> = spheres.iter().collect();
+    let result = vtk_pure_rs::filters::core::append::append(&refs);
+    let total_pts: usize = spheres.iter().map(|s| s.points.len()).sum();
+    assert_eq!(result.points.len(), total_pts, "append should sum all points");
+}
+
+#[test]
+fn filter_sphere_64_symmetry() {
+    let pd = sphere(&SphereParams { theta_resolution: 64, phi_resolution: 64, ..Default::default() });
+    let bb = vtk_pure_rs::data::DataSet::bounds(&pd);
+    // Sphere should be symmetric
+    assert!((bb.x_max + bb.x_min).abs() < 0.01, "sphere should be centered in x");
+    assert!((bb.y_max + bb.y_min).abs() < 0.01, "sphere should be centered in y");
+    assert!((bb.z_max + bb.z_min).abs() < 0.01, "sphere should be centered in z");
+}
+
+#[test]
+fn filter_warp_scalar_displaces() {
+    let pd = test_sphere();
+    let with_normals = vtk_pure_rs::filters::normals::normals::compute_normals(&pd);
+    let with_elev = vtk_pure_rs::filters::geometry::elevation::elevation_z(&with_normals);
+    let result = vtk_pure_rs::filters::transform::warp::warp_by_scalar(&with_elev, 0.1);
+    // Points should have moved
+    let p_orig = with_elev.points.get(0);
+    let p_warp = result.points.get(0);
+    let moved = (p_orig[0]-p_warp[0]).abs() + (p_orig[1]-p_warp[1]).abs() + (p_orig[2]-p_warp[2]).abs();
+    // Some points may not move if scalar is 0, so just check total
+    let total_moved: f64 = (0..result.points.len()).map(|i| {
+        let a = with_elev.points.get(i);
+        let b = result.points.get(i);
+        (a[0]-b[0]).abs() + (a[1]-b[1]).abs() + (a[2]-b[2]).abs()
+    }).sum();
+    assert!(total_moved > 0.1, "warp should displace some points");
+}
+
+#[test]
+fn signed_distance_has_positive_negative() {
+    let pd = tri_sphere();
+    let img = vtk_pure_rs::filters::distance::signed_distance::signed_distance(&pd, [8, 8, 8]);
+    let s = img.point_data().scalars().unwrap();
+    let mut has_pos = false;
+    let mut has_neg = false;
+    let mut buf = [0.0f64];
+    for i in 0..s.num_tuples() {
+        s.tuple_as_f64(i, &mut buf);
+        if buf[0] > 0.01 { has_pos = true; }
+        if buf[0] < -0.01 { has_neg = true; }
+    }
+    assert!(has_pos, "SDF should have positive (outside) values");
+    assert!(has_neg, "SDF should have negative (inside) values");
+}

@@ -51,8 +51,38 @@ pub fn flying_edges_3d(image: &ImageData, scalars: &[f64], isovalue: f64) -> Pol
         (0,4,4,0,0),(1,5,4,1,0),(2,6,4,1,1),(3,7,4,0,1),
     ];
 
-    let mut pts_flat: Vec<f64> = Vec::new();
-    let mut conn: Vec<i64> = Vec::new();
+    // Pass 2: count points and triangles per cell for pre-allocation
+    let mut est_pts: usize = 0;
+    let mut est_tris: usize = 0;
+    for k in 0..nz-1 {
+        for j in 0..ny-1 {
+            let rows = [k*ny+j, k*ny+j+1, (k+1)*ny+j, (k+1)*ny+j+1];
+            let mut xl = nxm1; let mut xr = 0;
+            for &r in &rows { xl = xl.min(trim_min[r]); xr = xr.max(trim_max[r]); }
+            if xl >= xr { continue; }
+            let xc = [rows[0]*nxm1, rows[1]*nxm1, rows[2]*nxm1, rows[3]*nxm1];
+            for i in xl..xr {
+                let e00 = unsafe { *x_cases.get_unchecked(xc[0]+i) };
+                let e10 = unsafe { *x_cases.get_unchecked(xc[1]+i) };
+                let e01 = unsafe { *x_cases.get_unchecked(xc[2]+i) };
+                let e11 = unsafe { *x_cases.get_unchecked(xc[3]+i) };
+                let ci = (e00 & 1) | (e00 & 2)
+                    | ((e10 & 2) << 1) | ((e10 & 1) << 3)
+                    | ((e01 & 1) << 4) | ((e01 & 2) << 4)
+                    | ((e11 & 2) << 5) | ((e11 & 1) << 7);
+                let edges = EDGE_TABLE[ci as usize];
+                if edges == 0 { continue; }
+                est_pts += (edges as u32).count_ones() as usize; // upper bound
+                let tr = &TRI_TABLE[ci as usize];
+                let mut t = 0;
+                while t < 15 && tr[t] != -1 { t += 3; }
+                est_tris += t / 3;
+            }
+        }
+    }
+
+    let mut pts_flat: Vec<f64> = Vec::with_capacity(est_pts * 3);
+    let mut conn: Vec<i64> = Vec::with_capacity(est_tris * 3);
     let mut n_pts: i64 = 0;
 
     let ss = nx * ny;
@@ -138,7 +168,9 @@ pub fn flying_edges_3d(image: &ImageData, scalars: &[f64], isovalue: f64) -> Pol
         }
         std::mem::swap(&mut xe0, &mut xe1);
         std::mem::swap(&mut ye0, &mut ye1);
-        xe1.fill(-1); ye1.fill(-1); ze.fill(-1);
+        for v in xe1.iter_mut() { *v = -1; }
+        for v in ye1.iter_mut() { *v = -1; }
+        for v in ze.iter_mut()  { *v = -1; }
     }
 
     if conn.is_empty() { return PolyData::new(); }

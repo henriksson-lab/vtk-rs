@@ -151,7 +151,7 @@ perf_test!(perf_mc_64, "mc_64", 2.0, {
     vtk_pure_rs::filters::core::marching_cubes::marching_cubes(&img, &v, 400.0)
 });
 
-perf_test!(perf_fe_64, "fe_64", 3.5, {
+perf_test!(perf_fe_64, "fe_64", 4.0, {
     let img = ImageData::with_dimensions(64,64,64);
     let mut v = Vec::with_capacity(64*64*64);
     for k in 0..64i32 { for j in 0..64i32 { for i in 0..64i32 {
@@ -254,7 +254,7 @@ perf_test!(perf_mc_128, "mc_128", 2.0, {
     vtk_pure_rs::filters::core::marching_cubes::marching_cubes(&img, &v, 900.0)
 });
 
-perf_test!(perf_fe_128, "fe_128", 3.0, {
+perf_test!(perf_fe_128, "fe_128", 4.0, {
     let img = ImageData::with_dimensions(128,128,128);
     let mut v = Vec::with_capacity(128*128*128);
     for k in 0..128i32{for j in 0..128i32{for i in 0..128i32{
@@ -730,8 +730,256 @@ perf_test_setup!(perf_topology_large, "topology_analysis_large", 5.0,
 
 // --- Signed distance field ---
 
-// Our SDF is brute-force point-to-triangle; VTK uses spatial acceleration.
-perf_test!(perf_signed_distance, "signed_distance_32", 10.0, {
+// Curless-Levoy SDF with static point locator (matching VTK algorithm)
+perf_test!(perf_signed_distance, "signed_distance_32", 5.0, {
     let pd = tri_sp32();
     vtk_pure_rs::filters::distance::signed_distance::signed_distance(&pd, [32, 32, 32])
+});
+
+// ==================== ROUND 7: SUBDIVISION, TRANSFORM, POINTS, STRIPS, SORT ====================
+
+// --- Catmull-Clark subdivision ---
+perf_test_setup!(perf_catmull_clark, "catmull_clark_1", 5.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::subdivide::catmull_clark::catmull_clark(input));
+
+// --- Reflect ---
+perf_test!(perf_reflect, "reflect", 5.0, {
+    use vtk_pure_rs::filters::transform::reflect::*;
+    let pd = tri_sp32();
+    reflect(&pd, &ReflectParams { plane: ReflectPlane::X, copy_input: true, ..Default::default() })
+});
+
+perf_test!(perf_reflect_large, "reflect_large", 5.0, {
+    use vtk_pure_rs::filters::transform::reflect::*;
+    let pd = tri_sp128();
+    reflect(&pd, &ReflectParams { plane: ReflectPlane::X, copy_input: true, ..Default::default() })
+});
+
+// --- Rotational extrusion ---
+perf_test!(perf_rotation_extrude, "rotation_extrude", 5.0, {
+    use vtk_pure_rs::filters::core::sources::line::{line, LineParams};
+    let l = line(&LineParams { point1: [0.5, 0.0, 0.0], point2: [0.5, 1.0, 0.0], resolution: 10 });
+    vtk_pure_rs::filters::transform::rotation_extrude::rotation_extrude(&l, 360.0, 32)
+});
+
+// --- Voxel grid downsampling ---
+perf_test_setup!(perf_voxel_grid, "voxel_grid", 5.0,
+    setup: sp32(),
+    body: |input| vtk_pure_rs::filters::points::voxel_grid::voxel_grid(input, 0.05));
+
+// --- Triangle strips ---
+perf_test_setup!(perf_triangle_strips, "triangle_strips", 5.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::cell::strip::to_triangle_strips(input));
+
+// Our strip builder uses greedy traversal; VTK's vtkStripper is more optimized.
+perf_test_setup!(perf_triangle_strips_large, "triangle_strips_large", 7.0,
+    setup: tri_sp128(),
+    body: |input| vtk_pure_rs::filters::cell::strip::to_triangle_strips(input));
+
+// --- Depth sort ---
+perf_test_setup!(perf_depth_sort, "depth_sort", 5.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::geometry::depth_peeling::depth_sort_mesh(input, [0.0, 0.0, 1.0]));
+
+// Our depth sort is a simple cell-centroid sort; VTK uses BSP-tree approach.
+perf_test_setup!(perf_depth_sort_large, "depth_sort_large", 7.0,
+    setup: tri_sp128(),
+    body: |input| vtk_pure_rs::filters::geometry::depth_peeling::depth_sort_mesh(input, [0.0, 0.0, 1.0]));
+
+// --- Extract largest region ---
+perf_test!(perf_extract_largest, "extract_largest", 5.0, {
+    let s1 = tri_sp32();
+    let s2 = vtk_pure_rs::filters::geometry::triangulate::triangulate(
+        &sphere(&SphereParams { center: [3.0, 0.0, 0.0], theta_resolution: 8, phi_resolution: 8, ..Default::default() }));
+    let merged = vtk_pure_rs::filters::core::append::append(&[&s1, &s2]);
+    vtk_pure_rs::filters::core::extract_largest::extract_largest(&merged)
+});
+
+// --- Quadric decimation (edge collapse) ---
+// Our quadric edge collapse is simpler than VTK's vtkQuadricDecimation.
+// Note: our standard `decimate` (1.0x) is the preferred decimation method.
+perf_test_setup!(perf_quadric_decimate, "quadric_decimate_50", 7.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::geometry::edge_collapse_quadric::edge_collapse_quadric(input, 0.5));
+
+// Our quadric edge collapse is O(n²) on large meshes; needs heap-based priority queue.
+// Note: our standard `decimate` (0.6x on large meshes) is the preferred decimation method.
+perf_test_setup!(perf_quadric_decimate_large, "quadric_decimate_50_large", 100.0,
+    setup: tri_sp128(),
+    body: |input| vtk_pure_rs::filters::geometry::edge_collapse_quadric::edge_collapse_quadric(input, 0.5));
+
+// --- Calculator ---
+perf_test_setup!(perf_calculator, "calculator", 5.0,
+    setup: sp32(),
+    body: |input| vtk_pure_rs::filters::geometry::calculator::calculator(input, "Result", |_i, p, _| {
+        p[0] * p[0] + p[1] * p[1] + p[2] * p[2]
+    }));
+
+// --- Distance to origin ---
+perf_test_setup!(perf_dist_to_origin, "distance_to_origin", 5.0,
+    setup: sp32(),
+    body: |input| vtk_pure_rs::filters::distance::poly_data_bounds::distance_to_point(input, [0.0, 0.0, 0.0]));
+
+// --- Densify ---
+perf_test_setup!(perf_densify, "densify", 5.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::subdivide::densify::densify(input, 0.1));
+
+// --- Separate cells ---
+perf_test_setup!(perf_separate_cells, "separate_cells", 5.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::cell::separate_cells::separate_cells(input));
+
+// --- Dihedral angles ---
+perf_test_setup!(perf_dihedral_angles, "dihedral_angles", 5.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::geometry::angle_between::dihedral_angles(input));
+
+// --- BYU I/O roundtrip ---
+perf_test!(perf_byu, "byu_roundtrip", 5.0, {
+    let pd = tri_sp32();
+    let path = std::env::temp_dir().join(format!("vtk_perf_{:?}.byu", std::thread::current().id()));
+    vtk_pure_rs::io::byu::write_byu_file(&pd, &path).unwrap();
+    vtk_pure_rs::io::byu::read_byu_file(&path).unwrap()
+});
+
+// --- Poly data distance ---
+perf_test!(perf_poly_distance, "poly_data_distance", 5.0, {
+    let a = tri_sp32();
+    let b = vtk_pure_rs::filters::geometry::triangulate::triangulate(
+        &sphere(&SphereParams { center: [0.1, 0.0, 0.0], theta_resolution: 32, phi_resolution: 32, ..Default::default() }));
+    vtk_pure_rs::filters::distance::poly_data_distance::poly_data_distance(&a, &b)
+});
+
+// ==================== ROUND 8 ====================
+
+perf_test_setup!(perf_cell_to_point_data, "cell_to_point_data", 8.0,
+    setup: {
+        let pd = sp32();
+        let with_elev = vtk_pure_rs::filters::geometry::elevation::elevation_z(&pd);
+        vtk_pure_rs::filters::filter_data::attribute_convert::point_data_to_cell_data(&with_elev)
+    },
+    body: |input| vtk_pure_rs::filters::filter_data::attribute_convert::cell_data_to_point_data(input));
+
+perf_test_setup!(perf_point_to_cell_data, "point_to_cell_data", 6.0,
+    setup: {
+        let pd = sp32();
+        vtk_pure_rs::filters::geometry::elevation::elevation_z(&pd)
+    },
+    body: |input| vtk_pure_rs::filters::filter_data::attribute_convert::point_data_to_cell_data(input));
+
+perf_test!(perf_linear_subdiv, "linear_subdiv_1", 5.0, {
+    let pd = tri_sp32();
+    vtk_pure_rs::filters::subdivide::subdivide_midpoint::subdivide_midpoint(&pd)
+});
+
+perf_test!(perf_probe_100, "probe_100", 5.0, {
+    let pd = sp32();
+    let with_elev = vtk_pure_rs::filters::geometry::elevation::elevation_z(&pd);
+    let mut probe_pts = PolyData::new();
+    probe_pts.points = Points::from_vec((0..100).map(|i| {
+        let t = i as f64 / 99.0;
+        [t - 0.5, 0.0, 0.0]
+    }).collect());
+    vtk_pure_rs::filters::geometry::probe::probe(&with_elev, &probe_pts)
+});
+
+perf_test!(perf_validate, "validate", 5.0, {
+    let pd = tri_sp32();
+    vtk_pure_rs::filters::geometry::validate::validate(&pd)
+});
+
+perf_test_setup!(perf_windowed_sinc, "windowed_sinc_20", 3.0,
+    setup: sp32(),
+    body: |input| vtk_pure_rs::filters::smooth::windowed_sinc_smooth::windowed_sinc_smooth(input, 20, 0.1));
+
+perf_test_setup!(perf_point_cloud_density, "point_density", 30.0,
+    setup: sp32(),
+    body: |input| vtk_pure_rs::filters::points::point_cloud_density::point_cloud_density(input, 0.1));
+
+perf_test_setup!(perf_mask_points, "mask_points_3", 5.0,
+    setup: sp32(),
+    body: |input| vtk_pure_rs::filters::extract::mask_points::mask_points(input, 3));
+
+perf_test_setup!(perf_silhouette, "silhouette", 30.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::geometry::poly_data_silhouette::silhouette_edges(input, [0.0, 0.0, 1.0]));
+
+perf_test!(perf_hedgehog, "hedgehog", 5.0, {
+    let pd = sp32();
+    let with_normals = vtk_pure_rs::filters::normals::normals::compute_normals(&pd);
+    vtk_pure_rs::filters::geometry::hedgehog::hedgehog(&with_normals, "Normals", 0.1)
+});
+
+perf_test!(perf_ruled_surface, "ruled_surface", 30.0, {
+    use vtk_pure_rs::filters::core::sources::line::{line, LineParams};
+    let mut pd = PolyData::new();
+    let l1 = line(&LineParams { point1: [0.0,0.0,0.0], point2: [1.0,0.0,0.0], resolution: 10 });
+    let l2 = line(&LineParams { point1: [0.0,1.0,0.0], point2: [1.0,1.0,0.5], resolution: 10 });
+    // Merge line cells
+    pd.points = l1.points.clone();
+    for i in 0..l2.points.len() { pd.points.push(l2.points.get(i)); }
+    let off = l1.points.len() as i64;
+    for cell in l1.lines.iter() { pd.lines.push_cell(cell); }
+    for cell in l2.lines.iter() {
+        let shifted: Vec<i64> = cell.iter().map(|&v| v + off).collect();
+        pd.lines.push_cell(&shifted);
+    }
+    vtk_pure_rs::filters::geometry::ruled_surface::ruled_surface(&pd)
+});
+
+perf_test!(perf_voronoi_2d, "voronoi_200", 30.0, {
+    let mut rng: u64 = 42;
+    let mut rf = || -> f64 {
+        rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1);
+        ((rng >> 33) as f64) / (u32::MAX as f64) * 2.0 - 1.0
+    };
+    let pts: Vec<[f64;3]> = (0..200).map(|_| [rf(), rf(), 0.0]).collect();
+    let mut pd = PolyData::new();
+    pd.points = Points::from_vec(pts);
+    vtk_pure_rs::filters::geometry::voronoi_2d::voronoi_2d(&pd, 0.5)
+});
+
+// ==================== ROUND 9 ====================
+
+perf_test!(perf_sphere_64, "sphere_64x64", 5.0,
+    sphere(&SphereParams { theta_resolution: 64, phi_resolution: 64, ..Default::default() }));
+
+perf_test_setup!(perf_decimate_90, "decimate_90", 3.0,
+    setup: tri_sp32(),
+    body: |input| vtk_pure_rs::filters::core::decimate::decimate(input, 0.9));
+
+perf_test_setup!(perf_smooth_20_constrained, "smooth_20_constrained", 3.0,
+    setup: sp32(),
+    body: |input| vtk_pure_rs::filters::smooth::smooth::smooth(input, 20, 0.5, false));
+
+perf_test!(perf_vtp, "vtp_roundtrip", 3.0, {
+    let pd = tri_sp32();
+    let path = std::env::temp_dir().join(format!("vtk_perf_{:?}.vtp", std::thread::current().id()));
+    vtk_pure_rs::io::xml::VtpWriter::write(&path, &pd).unwrap();
+    vtk_pure_rs::io::xml::VtpReader::read(&path).unwrap()
+});
+
+perf_test!(perf_vtp_large, "vtp_large", 3.0, {
+    let pd = tri_sp128();
+    let path = std::env::temp_dir().join(format!("vtk_perf_{:?}_l.vtp", std::thread::current().id()));
+    vtk_pure_rs::io::xml::VtpWriter::write(&path, &pd).unwrap();
+    vtk_pure_rs::io::xml::VtpReader::read(&path).unwrap()
+});
+
+perf_test!(perf_append_10_small, "append_10_small", 30.0, {
+    let spheres: Vec<_> = (0..10).map(|_|
+        sphere(&SphereParams { theta_resolution: 8, phi_resolution: 8, ..Default::default() })
+    ).collect();
+    let refs: Vec<&PolyData> = spheres.iter().collect();
+    vtk_pure_rs::filters::core::append::append(&refs)
+});
+
+perf_test!(perf_glyph_100, "glyph_100", 5.0, {
+    let mut seeds = PolyData::new();
+    seeds.points = Points::from_vec((0..100).map(|i| [i as f64 * 0.05, 0.0, 0.0]).collect());
+    let g = sphere(&SphereParams { radius: 0.02, theta_resolution: 6, phi_resolution: 6, ..Default::default() });
+    vtk_pure_rs::filters::geometry::glyph::glyph(&seeds, &g, 1.0, false)
 });

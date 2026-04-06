@@ -11,18 +11,18 @@ pub fn point_cloud_density(input: &PolyData, radius: f64) -> PolyData {
         return input.clone();
     }
 
-    let pts: Vec<[f64; 3]> = (0..n).map(|i| input.points.get(i)).collect();
+    let pts = input.points.to_vec();
     let tree = KdTree::build(&pts);
 
     let sphere_vol = (4.0 / 3.0) * std::f64::consts::PI * radius * radius * radius;
+    let inv_vol = if sphere_vol > 1e-15 { 1.0 / sphere_vol } else { 0.0 };
     let mut counts = Vec::with_capacity(n);
     let mut densities = Vec::with_capacity(n);
 
     for i in 0..n {
-        let neighbors = tree.find_within_radius(pts[i], radius);
-        let count = neighbors.len(); // includes self
+        let count = tree.find_within_radius(pts[i], radius).len();
         counts.push(count as f64);
-        densities.push(if sphere_vol > 1e-15 { count as f64 / sphere_vol } else { 0.0 });
+        densities.push(count as f64 * inv_vol);
     }
 
     let mut pd = input.clone();

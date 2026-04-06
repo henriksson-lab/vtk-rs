@@ -1,80 +1,137 @@
+use std::collections::HashMap;
 use crate::data::{CellArray, PolyData};
 
 /// Convert triangle polygons to triangle strips.
 ///
-/// Uses a simple greedy algorithm: picks an unvisited triangle, then
+/// Uses a greedy algorithm: picks an unvisited triangle, then
 /// extends the strip by finding adjacent triangles sharing an edge.
 pub fn to_triangle_strips(input: &PolyData) -> PolyData {
-    let n_cells = input.polys.num_cells();
-    if n_cells == 0 {
+    let nc = input.polys.num_cells();
+    if nc == 0 {
         return input.clone();
     }
 
-    // Only works on triangles
-    let cells: Vec<[i64; 3]> = input.polys.iter()
-        .filter(|c| c.len() == 3)
-        .map(|c| [c[0], c[1], c[2]])
-        .collect();
+    let offsets = input.polys.offsets();
+    let conn = input.polys.connectivity();
 
-    if cells.is_empty() {
-        return input.clone();
-    }
-
-    // Build edge -> triangle adjacency
-    use std::collections::HashMap;
-    let mut edge_tris: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
-    for (ti, tri) in cells.iter().enumerate() {
-        for e in 0..3 {
-            let a = tri[e];
-            let b = tri[(e + 1) % 3];
-            let key = if a < b { (a, b) } else { (b, a) };
-            edge_tris.entry(key).or_default().push(ti);
+    // Collect triangle indices and vertex ids using raw access
+    let mut tri_verts: Vec<[i64; 3]> = Vec::with_capacity(nc);
+    for ci in 0..nc {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        if end - start == 3 {
+            tri_verts.push([conn[start], conn[start + 1], conn[start + 2]]);
         }
     }
 
-    let mut visited = vec![false; cells.len()];
-    let mut out_strips = CellArray::new();
+    let nt = tri_verts.len();
+    if nt == 0 {
+        return input.clone();
+    }
 
-    for start in 0..cells.len() {
+    // Build per-triangle adjacency: for each triangle edge, store the neighboring triangle.
+    // tri_adj[ti*3 + edge_idx] = neighbor tri index (u32::MAX if boundary).
+    // Uses sorted edge list to pair triangles sharing each edge.
+    let mut edge_list: Vec<(u64, u32, u8)> = Vec::with_capacity(nt * 3); // (key, tri, edge_idx)
+    for (ti, tri) in tri_verts.iter().enumerate() {
+        for e in 0u8..3 {
+            let a = tri[e as usize];
+            let b = tri[((e + 1) % 3) as usize];
+            let key = if a < b { (a as u64) << 32 | b as u64 } else { (b as u64) << 32 | a as u64 };
+            edge_list.push((key, ti as u32, e));
+        }
+    }
+    edge_list.sort_unstable_by_key(|&(k, _, _)| k);
+
+    let mut tri_adj = vec![u32::MAX; nt * 3]; // tri_adj[ti*3 + edge] = neighbor tri
+    let n_edges = edge_list.len();
+    let mut i = 0;
+    while i < n_edges {
+        let key = edge_list[i].0;
+        if i + 1 < n_edges && edge_list[i + 1].0 == key {
+            let (_, t0, e0) = edge_list[i];
+            let (_, t1, e1) = edge_list[i + 1];
+            tri_adj[t0 as usize * 3 + e0 as usize] = t1;
+            tri_adj[t1 as usize * 3 + e1 as usize] = t0;
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
+
+    // Build edge -> triangle lookup for greedy extension (HashMap, but built from sorted data)
+    let mut edge_tris: HashMap<u64, [u32; 2]> = HashMap::with_capacity(nt * 3 / 2);
+    i = 0;
+    while i < n_edges {
+        let key = edge_list[i].0;
+        let t0 = edge_list[i].1;
+        let mut t1 = u32::MAX;
+        if i + 1 < n_edges && edge_list[i + 1].0 == key {
+            t1 = edge_list[i + 1].1;
+            i += 1;
+        }
+        edge_tris.insert(key, [t0, t1]);
+        i += 1;
+    }
+
+    let mut visited = vec![false; nt];
+
+    // Pre-size strip output
+    let mut strip_off: Vec<i64> = Vec::with_capacity(nt / 2 + 1);
+    let mut strip_conn: Vec<i64> = Vec::with_capacity(nt * 2);
+    strip_off.push(0);
+
+    for start in 0..nt {
         if visited[start] {
             continue;
         }
         visited[start] = true;
 
-        let mut strip = vec![cells[start][0], cells[start][1], cells[start][2]];
+        let tri = &tri_verts[start];
+        let strip_start = strip_conn.len();
+        strip_conn.push(tri[0]);
+        strip_conn.push(tri[1]);
+        strip_conn.push(tri[2]);
 
-        // Try to extend the strip
+        // Extend strip greedily
         loop {
-            let last_len = strip.len();
-            let a = strip[last_len - 2];
-            let b = strip[last_len - 1];
-            let key = if a < b { (a, b) } else { (b, a) };
+            let len = strip_conn.len();
+            let a = strip_conn[len - 2];
+            let b = strip_conn[len - 1];
+            let key = if a < b { (a as u64) << 32 | b as u64 } else { (b as u64) << 32 | a as u64 };
 
-            let next = edge_tris.get(&key).and_then(|tris| {
-                tris.iter().find(|&&ti| {
-                    if visited[ti] { return false; }
-                    let tri = &cells[ti];
-                    // The third vertex (not a or b) is the new point
-                    tri.iter().any(|&v| v != a && v != b)
-                }).copied()
+            let next = edge_tris.get(&key).and_then(|pair| {
+                for &ti in pair {
+                    if ti == u32::MAX { break; }
+                    let ti = ti as usize;
+                    if visited[ti] { continue; }
+                    let t = &tri_verts[ti];
+                    // Find the third vertex (not a or b)
+                    for &v in t {
+                        if v != a && v != b {
+                            return Some((ti, v));
+                        }
+                    }
+                }
+                None
             });
 
-            if let Some(ti) = next {
+            if let Some((ti, new_pt)) = next {
                 visited[ti] = true;
-                let tri = &cells[ti];
-                let new_pt = tri.iter().find(|&&v| v != a && v != b).unwrap();
-                strip.push(*new_pt);
+                strip_conn.push(new_pt);
             } else {
                 break;
             }
         }
 
-        out_strips.push_cell(&strip);
+        strip_off.push(strip_conn.len() as i64);
     }
 
-    let mut pd = input.clone();
-    pd.polys = CellArray::new();
-    pd.strips = out_strips;
+    let mut pd = PolyData::new();
+    pd.points = input.points.clone();
+    pd.strips = CellArray::from_raw(strip_off, strip_conn);
+    pd.lines = input.lines.clone();
+    pd.verts = input.verts.clone();
     pd
 }
 
@@ -104,9 +161,8 @@ mod tests {
             vec![[0, 1, 2], [1, 3, 2]],
         );
         let result = to_triangle_strips(&pd);
-        // Should form one strip of 4 vertices
         let total_strip_verts: usize = result.strips.iter().map(|s| s.len()).sum();
-        assert!(total_strip_verts <= 5); // at most 4 in one strip or 3+3 in two
+        assert!(total_strip_verts <= 5);
     }
 
     #[test]

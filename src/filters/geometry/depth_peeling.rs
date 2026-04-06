@@ -1,17 +1,9 @@
 //! Depth-sorted polygon layers for order-independent transparency.
-//!
-//! Splits a PolyData into front-to-back layers by depth sorting relative
-//! to a view direction. Each layer can be rendered in order for correct
-//! transparency blending. This is a CPU-side preparation for the depth
-//! peeling rendering technique.
 
 use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
 
 /// Split a mesh into depth-peeled layers by sorting faces front-to-back
 /// relative to a view direction.
-///
-/// Returns a vector of PolyData, one per layer, sorted front-to-back.
-/// `num_layers` controls maximum number of peeling passes.
 pub fn depth_peel_layers(
     mesh: &PolyData,
     view_direction: [f64; 3],
@@ -21,36 +13,13 @@ pub fn depth_peel_layers(
         return Vec::new();
     }
 
-    // Compute depth (dot product of centroid with view direction) per cell
-    let mut cell_depths: Vec<(usize, f64)> = Vec::new();
-    for (ci, cell) in mesh.polys.iter().enumerate() {
-        if cell.is_empty() { continue; }
-        let mut cx = 0.0;
-        let mut cy = 0.0;
-        let mut cz = 0.0;
-        for &pid in cell {
-            let p = mesh.points.get(pid as usize);
-            cx += p[0];
-            cy += p[1];
-            cz += p[2];
-        }
-        let n = cell.len() as f64;
-        cx /= n;
-        cy /= n;
-        cz /= n;
-        let depth = cx * view_direction[0] + cy * view_direction[1] + cz * view_direction[2];
-        cell_depths.push((ci, depth));
-    }
+    let cell_depths = compute_cell_depths(mesh, view_direction);
 
-    // Sort by depth (front = smallest dot product for typical -Z view)
-    cell_depths.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
-
-    // Split into layers of roughly equal size
     let cells_per_layer = (cell_depths.len() + num_layers - 1) / num_layers;
 
     let mut layers = Vec::new();
     for chunk in cell_depths.chunks(cells_per_layer) {
-        let layer = extract_cells_to_poly_data(mesh, chunk);
+        let layer = extract_cells_fast(mesh, chunk);
         if layer.polys.num_cells() > 0 {
             layers.push(layer);
         }
@@ -67,69 +36,115 @@ pub fn depth_sort_mesh(
     mesh: &PolyData,
     view_direction: [f64; 3],
 ) -> PolyData {
-    if mesh.polys.num_cells() == 0 {
+    let nc = mesh.polys.num_cells();
+    if nc == 0 {
         return mesh.clone();
     }
 
-    let mut cell_depths: Vec<(usize, f64)> = Vec::new();
-    for (ci, cell) in mesh.polys.iter().enumerate() {
-        if cell.is_empty() { continue; }
-        let mut cx = 0.0;
-        let mut cy = 0.0;
-        let mut cz = 0.0;
-        for &pid in cell {
-            let p = mesh.points.get(pid as usize);
-            cx += p[0];
-            cy += p[1];
-            cz += p[2];
+    let cell_depths = compute_cell_depths(mesh, view_direction);
+
+    // Rebuild PolyData with sorted cell order using raw offsets/connectivity
+    let offsets = mesh.polys.offsets();
+    let conn = mesh.polys.connectivity();
+
+    // Pre-count total connectivity size (same as input)
+    let total_conn = conn.len();
+    let mut new_conn = Vec::with_capacity(total_conn);
+    let mut new_off = Vec::with_capacity(nc + 1);
+    new_off.push(0i64);
+    let mut depth_arr = Vec::with_capacity(nc);
+
+    // Point remapping: use a flat Vec instead of HashMap
+    let np = mesh.points.len();
+    let src_pts = mesh.points.as_flat_slice();
+    let mut pt_map: Vec<i64> = vec![-1; np];
+    let mut pts_flat: Vec<f64> = Vec::with_capacity(np * 3);
+
+    for &(ci, depth) in &cell_depths {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        for idx in start..end {
+            let old_id = conn[idx] as usize;
+            if pt_map[old_id] < 0 {
+                pt_map[old_id] = (pts_flat.len() / 3) as i64;
+                let b = old_id * 3;
+                pts_flat.extend_from_slice(&src_pts[b..b + 3]);
+            }
+            new_conn.push(pt_map[old_id]);
         }
-        let n = cell.len() as f64;
-        let depth = (cx / n) * view_direction[0]
-            + (cy / n) * view_direction[1]
-            + (cz / n) * view_direction[2];
-        cell_depths.push((ci, depth));
-    }
-
-    cell_depths.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
-
-    let mut result = extract_cells_to_poly_data(mesh, &cell_depths);
-
-    // Add depth as cell data
-    let depths: Vec<f64> = cell_depths.iter().map(|(_, d)| *d).collect();
-    result.cell_data_mut().add_array(AnyDataArray::F64(
-        DataArray::from_vec("Depth", depths, 1),
-    ));
-
-    result
-}
-
-fn extract_cells_to_poly_data(mesh: &PolyData, cells: &[(usize, f64)]) -> PolyData {
-    // Map old point indices to new ones
-    let mut point_map: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
-    let mut new_points = Points::<f64>::new();
-    let mut new_polys = CellArray::new();
-
-    let all_cells: Vec<Vec<i64>> = mesh.polys.iter().map(|c| c.to_vec()).collect();
-
-    for &(ci, _) in cells {
-        if ci >= all_cells.len() { continue; }
-        let cell = &all_cells[ci];
-        let mut new_ids = Vec::with_capacity(cell.len());
-        for &old_id in cell {
-            let old_idx = old_id as usize;
-            let new_idx = *point_map.entry(old_idx).or_insert_with(|| {
-                let idx = new_points.len();
-                new_points.push(mesh.points.get(old_idx));
-                idx
-            });
-            new_ids.push(new_idx as i64);
-        }
-        new_polys.push_cell(&new_ids);
+        new_off.push(new_conn.len() as i64);
+        depth_arr.push(depth);
     }
 
     let mut result = PolyData::new();
-    result.points = new_points;
-    result.polys = new_polys;
+    result.points = Points::from_flat_vec(pts_flat);
+    result.polys = CellArray::from_raw(new_off, new_conn);
+    result.cell_data_mut().add_array(AnyDataArray::F64(
+        DataArray::from_vec("Depth", depth_arr, 1),
+    ));
+    result
+}
+
+fn compute_cell_depths(mesh: &PolyData, view_direction: [f64; 3]) -> Vec<(usize, f64)> {
+    let nc = mesh.polys.num_cells();
+    let offsets = mesh.polys.offsets();
+    let conn = mesh.polys.connectivity();
+    let pts = mesh.points.as_flat_slice();
+    let (vx, vy, vz) = (view_direction[0], view_direction[1], view_direction[2]);
+
+    let mut cell_depths = Vec::with_capacity(nc);
+    for ci in 0..nc {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        let n = (end - start) as f64;
+        if n < 1.0 { continue; }
+        let mut cx = 0.0;
+        let mut cy = 0.0;
+        let mut cz = 0.0;
+        for idx in start..end {
+            let b = conn[idx] as usize * 3;
+            cx += pts[b];
+            cy += pts[b + 1];
+            cz += pts[b + 2];
+        }
+        let depth = (cx / n) * vx + (cy / n) * vy + (cz / n) * vz;
+        cell_depths.push((ci, depth));
+    }
+
+    cell_depths.sort_unstable_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    cell_depths
+}
+
+fn extract_cells_fast(mesh: &PolyData, cells: &[(usize, f64)]) -> PolyData {
+    let offsets = mesh.polys.offsets();
+    let conn = mesh.polys.connectivity();
+    let np = mesh.points.len();
+    let src_pts = mesh.points.as_flat_slice();
+
+    let mut pt_map: Vec<i64> = vec![-1; np];
+    let mut pts_flat: Vec<f64> = Vec::new();
+    let mut new_conn = Vec::new();
+    let mut new_off = Vec::with_capacity(cells.len() + 1);
+    new_off.push(0i64);
+
+    for &(ci, _) in cells {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        for idx in start..end {
+            let old_id = conn[idx] as usize;
+            if pt_map[old_id] < 0 {
+                pt_map[old_id] = (pts_flat.len() / 3) as i64;
+                let b = old_id * 3;
+                pts_flat.extend_from_slice(&src_pts[b..b + 3]);
+            }
+            new_conn.push(pt_map[old_id]);
+        }
+        new_off.push(new_conn.len() as i64);
+    }
+
+    let mut result = PolyData::new();
+    result.points = Points::from_flat_vec(pts_flat);
+    result.polys = CellArray::from_raw(new_off, new_conn);
     result
 }
 
@@ -138,12 +153,9 @@ mod tests {
     use super::*;
 
     fn make_two_planes() -> PolyData {
-        // Two quads at different Z depths
         PolyData::from_triangles(
             vec![
-                // Front triangle (z=0)
                 [0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.5, 1.0, 0.0],
-                // Back triangle (z=1)
                 [0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.5, 1.0, 1.0],
             ],
             vec![[0, 1, 2], [3, 4, 5]],
@@ -165,8 +177,6 @@ mod tests {
         let sorted = depth_sort_mesh(&mesh, [0.0, 0.0, 1.0]);
         assert_eq!(sorted.polys.num_cells(), 2);
         assert!(sorted.cell_data().get_array("Depth").is_some());
-
-        // First cell should have smaller depth
         let depth_arr = sorted.cell_data().get_array("Depth").unwrap();
         let mut d0 = [0.0f64];
         let mut d1 = [0.0f64];

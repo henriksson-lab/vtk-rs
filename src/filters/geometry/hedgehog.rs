@@ -21,29 +21,39 @@ pub fn hedgehog(input: &PolyData, vector_name: &str, scale_factor: f64) -> PolyD
         return PolyData::new();
     }
 
-    let mut points = Points::<f64>::new();
-    let mut lines = CellArray::new();
+    // Pre-allocated flat buffers: 2 points per input point (base + tip), 3 coords each.
+    // Sequential connectivity avoids per-cell push_cell() overhead.
+    let pts_in = input.points.as_flat_slice();
+    let mut pts_flat = vec![0.0f64; n * 6];
+    let mut offsets = Vec::with_capacity(n + 1);
+    let mut conn = Vec::with_capacity(n * 2);
+    offsets.push(0i64);
 
+    let mut vbuf = [0.0f64; 3];
     for i in 0..n {
-        let p = input.points.get(i);
-        let mut v = [0.0f64; 3];
-        vectors.tuple_as_f64(i, &mut v);
+        let b = i * 3;
+        let px = pts_in[b];
+        let py = pts_in[b + 1];
+        let pz = pts_in[b + 2];
+        vectors.tuple_as_f64(i, &mut vbuf);
 
-        let tip = [
-            p[0] + v[0] * scale_factor,
-            p[1] + v[1] * scale_factor,
-            p[2] + v[2] * scale_factor,
-        ];
+        let out = i * 6;
+        pts_flat[out]     = px;
+        pts_flat[out + 1] = py;
+        pts_flat[out + 2] = pz;
+        pts_flat[out + 3] = px + vbuf[0] * scale_factor;
+        pts_flat[out + 4] = py + vbuf[1] * scale_factor;
+        pts_flat[out + 5] = pz + vbuf[2] * scale_factor;
 
-        let base_idx = points.len();
-        points.push(p);
-        points.push(tip);
-        lines.push_cell(&[base_idx as i64, (base_idx + 1) as i64]);
+        let base_idx = (i * 2) as i64;
+        conn.push(base_idx);
+        conn.push(base_idx + 1);
+        offsets.push((i as i64 + 1) * 2);
     }
 
     let mut result = PolyData::new();
-    result.points = points;
-    result.lines = lines;
+    result.points = Points::from_flat_vec(pts_flat);
+    result.lines = CellArray::from_raw(offsets, conn);
     result
 }
 

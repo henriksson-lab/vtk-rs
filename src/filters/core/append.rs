@@ -1,18 +1,17 @@
 use crate::data::{CellArray, Points, PolyData};
 
-/// Merge multiple PolyData into one. Pre-sized flat buffers, zero per-element alloc.
+/// Merge multiple PolyData into one. Bulk memcpy via flat slices for speed.
 pub fn append(inputs: &[&PolyData]) -> PolyData {
     if inputs.is_empty() { return PolyData::new(); }
     if inputs.len() == 1 { return inputs[0].clone(); }
 
     let total_pts: usize = inputs.iter().map(|p| p.points.len()).sum();
 
+    // Bulk copy point data via extend_from_slice on flat backing buffer.
+    // Avoids per-point get()/push() overhead (single memcpy per input mesh).
     let mut pts_flat = Vec::with_capacity(total_pts * 3);
     for &input in inputs {
-        for i in 0..input.points.len() {
-            let p = input.points.get(i);
-            pts_flat.push(p[0]); pts_flat.push(p[1]); pts_flat.push(p[2]);
-        }
+        pts_flat.extend_from_slice(input.points.as_flat_slice());
     }
 
     let polys = merge_cells(inputs, |p| &p.polys);
@@ -39,9 +38,28 @@ fn merge_cells(inputs: &[&PolyData], get: impl Fn(&PolyData) -> &CellArray) -> C
     let mut pt_off: i64 = 0;
     for &input in inputs {
         let cells = get(input);
-        for &id in cells.connectivity() { conn.push(id + pt_off); }
+        let src_conn = cells.connectivity();
+        if pt_off == 0 {
+            conn.extend_from_slice(src_conn);
+        } else {
+            // Bulk offset: extend then add offset in-place
+            let start = conn.len();
+            conn.extend_from_slice(src_conn);
+            for v in &mut conn[start..] {
+                *v += pt_off;
+            }
+        }
         let base = *offsets.last().unwrap();
-        for i in 1..cells.offsets().len() { offsets.push(base + cells.offsets()[i]); }
+        let src_off = cells.offsets();
+        if base == 0 {
+            offsets.extend_from_slice(&src_off[1..]);
+        } else {
+            let start = offsets.len();
+            offsets.extend_from_slice(&src_off[1..]);
+            for v in &mut offsets[start..] {
+                *v += base;
+            }
+        }
         pt_off += input.points.len() as i64;
     }
     CellArray::from_raw(offsets, conn)

@@ -19,18 +19,16 @@ pub fn warp_by_scalar(input: &PolyData, scale_factor: f64) -> PolyData {
     let n = input.num_points();
     let mut nbuf = [0.0f64; 3];
     let mut sbuf = [0.0f64];
+    let pts = output.points.as_flat_slice_mut();
 
     for i in 0..n {
-        let p = output.points.get(i);
         normals.tuple_as_f64(i, &mut nbuf);
         scalars.tuple_as_f64(i, &mut sbuf);
-
-        let displacement = sbuf[0] * scale_factor;
-        output.points.set(i, [
-            p[0] + nbuf[0] * displacement,
-            p[1] + nbuf[1] * displacement,
-            p[2] + nbuf[2] * displacement,
-        ]);
+        let d = sbuf[0] * scale_factor;
+        let b = i * 3;
+        pts[b]     += nbuf[0] * d;
+        pts[b + 1] += nbuf[1] * d;
+        pts[b + 2] += nbuf[2] * d;
     }
 
     output

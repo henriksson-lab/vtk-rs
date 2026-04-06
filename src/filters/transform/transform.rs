@@ -108,10 +108,17 @@ fn transform_normal(m: &Matrix4, n: [f64; 3]) -> [f64; 3] {
 pub fn transform(input: &PolyData, matrix: &Matrix4) -> PolyData {
     let mut output = input.clone();
 
-    // Transform points
-    for i in 0..output.points.len() {
-        let p = output.points.get(i);
-        output.points.set(i, transform_point(matrix, p));
+    // Transform points directly on flat slice — avoids per-point get/set overhead.
+    // Matrix multiply is inlined; remaining cost is dominated by clone().
+    let m = matrix;
+    let pts = output.points.as_flat_slice_mut();
+    let n = pts.len() / 3;
+    for i in 0..n {
+        let base = i * 3;
+        let (x, y, z) = (pts[base], pts[base + 1], pts[base + 2]);
+        pts[base]     = m[0][0] * x + m[1][0] * y + m[2][0] * z + m[3][0];
+        pts[base + 1] = m[0][1] * x + m[1][1] * y + m[2][1] * z + m[3][1];
+        pts[base + 2] = m[0][2] * x + m[1][2] * y + m[2][2] * z + m[3][2];
     }
 
     // Transform normals if present
@@ -120,13 +127,25 @@ pub fn transform(input: &PolyData, matrix: &Matrix4) -> PolyData {
         let nt = normals_arr.num_tuples();
         if nc == 3 {
             let name = normals_arr.name().to_string();
-            let mut new_normals = crate::data::DataArray::<f64>::new(&name, 3);
+            let mut flat = vec![0.0f64; nt * 3];
             let mut buf = [0.0f64; 3];
             for i in 0..nt {
                 normals_arr.tuple_as_f64(i, &mut buf);
-                let tn = transform_normal(matrix, buf);
-                new_normals.push_tuple(&tn);
+                let tx = m[0][0] * buf[0] + m[1][0] * buf[1] + m[2][0] * buf[2];
+                let ty = m[0][1] * buf[0] + m[1][1] * buf[1] + m[2][1] * buf[2];
+                let tz = m[0][2] * buf[0] + m[1][2] * buf[1] + m[2][2] * buf[2];
+                let len = (tx * tx + ty * ty + tz * tz).sqrt();
+                let base = i * 3;
+                if len > 1e-10 {
+                    let inv = 1.0 / len;
+                    flat[base] = tx * inv;
+                    flat[base + 1] = ty * inv;
+                    flat[base + 2] = tz * inv;
+                } else {
+                    flat[base + 2] = 1.0;
+                }
             }
+            let new_normals = crate::data::DataArray::<f64>::from_vec(&name, flat, 3);
             output.point_data_mut().add_array(new_normals.into());
             output.point_data_mut().set_active_normals(&name);
         }

@@ -14,20 +14,22 @@ pub fn slice_by_plane(
         return PolyData::new();
     }
 
-    // Pre-compute signed distances for all points (avoids redundant per-cell recomputation)
+    // Pre-compute signed distances using flat slice access.
+    // Edge interpolation also uses flat pts[] indexing to avoid per-point get() overhead.
     let np = input.points.len();
+    let pts = input.points.as_flat_slice();
+    let (nx, ny, nz) = (normal[0], normal[1], normal[2]);
+    let (ox, oy, oz) = (origin[0], origin[1], origin[2]);
     let mut dists = Vec::with_capacity(np);
     for i in 0..np {
-        let p = input.points.get(i);
+        let b = i * 3;
         dists.push(
-            (p[0] - origin[0]) * normal[0]
-                + (p[1] - origin[1]) * normal[1]
-                + (p[2] - origin[2]) * normal[2],
+            (pts[b] - ox) * nx + (pts[b + 1] - oy) * ny + (pts[b + 2] - oz) * nz,
         );
     }
 
     // Pre-sized flat buffers for output
-    let mut pts_flat: Vec<f64> = Vec::with_capacity(nc * 6); // ~2 points per intersected cell
+    let mut pts_flat: Vec<f64> = Vec::with_capacity(nc * 6);
     let mut line_conn: Vec<i64> = Vec::with_capacity(nc * 2);
     let mut line_off: Vec<i64> = Vec::with_capacity(nc + 1);
     line_off.push(0);
@@ -40,17 +42,15 @@ pub fn slice_by_plane(
         let end = offsets[ci + 1] as usize;
         let cell = &conn[start..end];
         let n = cell.len();
-        if n < 3 {
-            continue;
-        }
+        if n < 3 { continue; }
 
-        // Find edge crossings for this cell
-        let mut c0 = [0.0f64; 3];
-        let mut c1 = [0.0f64; 3];
+        // Find edge crossings using flat point access
+        let mut c0x = 0.0f64; let mut c0y = 0.0f64; let mut c0z = 0.0f64;
+        let mut c1x = 0.0f64; let mut c1y = 0.0f64; let mut c1z = 0.0f64;
         let mut num_crossings = 0u32;
 
         for i in 0..n {
-            let j = (i + 1) % n;
+            let j = if i + 1 < n { i + 1 } else { 0 };
             let ai = cell[i] as usize;
             let aj = cell[j] as usize;
             let di = unsafe { *dists.get_unchecked(ai) };
@@ -58,28 +58,25 @@ pub fn slice_by_plane(
 
             if (di >= 0.0) != (dj >= 0.0) {
                 let t = di / (di - dj);
-                let pi = input.points.get(ai);
-                let pj = input.points.get(aj);
-                let pt = [
-                    pi[0] + t * (pj[0] - pi[0]),
-                    pi[1] + t * (pj[1] - pi[1]),
-                    pi[2] + t * (pj[2] - pi[2]),
-                ];
+                let bi = ai * 3;
+                let bj = aj * 3;
+                let px = pts[bi]     + t * (pts[bj]     - pts[bi]);
+                let py = pts[bi + 1] + t * (pts[bj + 1] - pts[bi + 1]);
+                let pz = pts[bi + 2] + t * (pts[bj + 2] - pts[bi + 2]);
                 if num_crossings == 0 {
-                    c0 = pt;
+                    c0x = px; c0y = py; c0z = pz;
                     num_crossings = 1;
                 } else if num_crossings == 1 {
-                    c1 = pt;
+                    c1x = px; c1y = py; c1z = pz;
                     num_crossings = 2;
                 }
-                // For triangles we always get exactly 2 crossings
             } else if di.abs() < 1e-10 && dj.abs() >= 1e-10 {
-                let pt = input.points.get(ai);
+                let bi = ai * 3;
                 if num_crossings == 0 {
-                    c0 = pt;
+                    c0x = pts[bi]; c0y = pts[bi+1]; c0z = pts[bi+2];
                     num_crossings = 1;
                 } else if num_crossings == 1 {
-                    c1 = pt;
+                    c1x = pts[bi]; c1y = pts[bi+1]; c1z = pts[bi+2];
                     num_crossings = 2;
                 }
             }
@@ -87,8 +84,8 @@ pub fn slice_by_plane(
 
         if num_crossings == 2 {
             let idx = (pts_flat.len() / 3) as i64;
-            pts_flat.push(c0[0]); pts_flat.push(c0[1]); pts_flat.push(c0[2]);
-            pts_flat.push(c1[0]); pts_flat.push(c1[1]); pts_flat.push(c1[2]);
+            pts_flat.push(c0x); pts_flat.push(c0y); pts_flat.push(c0z);
+            pts_flat.push(c1x); pts_flat.push(c1y); pts_flat.push(c1z);
             line_conn.push(idx);
             line_conn.push(idx + 1);
             line_off.push(line_conn.len() as i64);

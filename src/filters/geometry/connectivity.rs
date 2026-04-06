@@ -13,53 +13,49 @@ pub fn extract_components(input: &PolyData) -> Vec<PolyData> {
     let mut parent: Vec<usize> = (0..n).collect();
     let mut rank = vec![0usize; n];
 
-    // Union all points in each cell
-    for cell in input.polys.iter() {
-        if cell.len() < 2 {
-            continue;
-        }
-        let first = cell[0] as usize;
-        for &id in &cell[1..] {
-            union(&mut parent, &mut rank, first, id as usize);
-        }
-    }
-    // Also for other cell types
-    for cells in [&input.verts, &input.lines, &input.strips] {
-        for cell in cells.iter() {
-            if cell.len() < 2 {
-                continue;
-            }
-            let first = cell[0] as usize;
-            for &id in &cell[1..] {
-                union(&mut parent, &mut rank, first, id as usize);
+    // Union all points in each cell using raw connectivity for speed
+    let all_cells: [&crate::data::CellArray; 4] = [&input.polys, &input.verts, &input.lines, &input.strips];
+    for cells in &all_cells {
+        let off = cells.offsets();
+        let con = cells.connectivity();
+        let nc = cells.num_cells();
+        for ci in 0..nc {
+            let start = off[ci] as usize;
+            let end = off[ci + 1] as usize;
+            if end - start < 2 { continue; }
+            let first = con[start] as usize;
+            for idx in (start + 1)..end {
+                union(&mut parent, &mut rank, first, con[idx] as usize);
             }
         }
     }
 
-    // Group cells by root
-    let mut component_cells: std::collections::HashMap<usize, Vec<Vec<i64>>> =
+    // Group cell indices by root (avoids copying cell data)
+    let offsets = input.polys.offsets();
+    let conn = input.polys.connectivity();
+    let nc = input.polys.num_cells();
+
+    let mut component_cells: std::collections::HashMap<usize, Vec<usize>> =
         std::collections::HashMap::new();
 
-    for cell in input.polys.iter() {
-        if cell.is_empty() {
-            continue;
-        }
-        let root = find(&mut parent, cell[0] as usize);
-        component_cells
-            .entry(root)
-            .or_default()
-            .push(cell.to_vec());
+    for ci in 0..nc {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        if start >= end { continue; }
+        let root = find(&mut parent, conn[start] as usize);
+        component_cells.entry(root).or_default().push(ci);
     }
 
     // Sort by size (largest first)
-    let mut components: Vec<(usize, Vec<Vec<i64>>)> = component_cells.into_iter().collect();
-    components.sort_by(|a, b| b.1.len().cmp(&a.1.len()));
+    let mut components: Vec<Vec<usize>> = component_cells.into_values().collect();
+    components.sort_by(|a, b| b.len().cmp(&a.len()));
 
-    // Build output PolyData for each component
+    // Build output PolyData for each component using flat slice access
+    let pts = input.points.as_flat_slice();
     components
         .into_iter()
-        .map(|(_, cells)| {
-            build_component(input, &cells)
+        .map(|cell_indices| {
+            build_component_fast(pts, offsets, conn, n, &cell_indices)
         })
         .collect()
 }
@@ -74,29 +70,38 @@ pub fn extract_largest_component(input: &PolyData) -> PolyData {
     }
 }
 
-fn build_component(input: &PolyData, cells: &[Vec<i64>]) -> PolyData {
-    let mut point_map = std::collections::HashMap::new();
-    let mut new_points = Points::<f64>::new();
-    let mut polys = CellArray::new();
+fn build_component_fast(
+    pts: &[f64],
+    offsets: &[i64],
+    conn: &[i64],
+    n_pts: usize,
+    cell_indices: &[usize],
+) -> PolyData {
+    // Use flat Vec for point remapping (avoids HashMap)
+    let mut pt_map: Vec<i64> = vec![-1; n_pts];
+    let mut pts_flat: Vec<f64> = Vec::new();
+    let mut out_off: Vec<i64> = Vec::with_capacity(cell_indices.len() + 1);
+    let mut out_conn: Vec<i64> = Vec::new();
+    out_off.push(0);
 
-    for cell in cells {
-        let remapped: Vec<i64> = cell
-            .iter()
-            .map(|&id| {
-                let old = id as usize;
-                *point_map.entry(old).or_insert_with(|| {
-                    let idx = new_points.len();
-                    new_points.push(input.points.get(old));
-                    idx
-                }) as i64
-            })
-            .collect();
-        polys.push_cell(&remapped);
+    for &ci in cell_indices {
+        let start = offsets[ci] as usize;
+        let end = offsets[ci + 1] as usize;
+        for idx in start..end {
+            let old_id = conn[idx] as usize;
+            if pt_map[old_id] < 0 {
+                pt_map[old_id] = (pts_flat.len() / 3) as i64;
+                let b = old_id * 3;
+                pts_flat.extend_from_slice(&pts[b..b + 3]);
+            }
+            out_conn.push(pt_map[old_id]);
+        }
+        out_off.push(out_conn.len() as i64);
     }
 
     let mut output = PolyData::new();
-    output.points = new_points;
-    output.polys = polys;
+    output.points = Points::from_flat_vec(pts_flat);
+    output.polys = CellArray::from_raw(out_off, out_conn);
     output
 }
 
