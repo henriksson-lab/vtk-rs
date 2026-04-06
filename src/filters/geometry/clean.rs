@@ -64,16 +64,15 @@ fn merge_points(points: &Points<f64>, tolerance: f64) -> (Points<f64>, Vec<usize
     // Sort-based approach: quantize to grid cell, group by cell, pick first in each group
     // This avoids per-point hash table operations entirely.
 
-    // Quantize all points to grid keys
-    let mut keyed: Vec<(u64, usize)> = Vec::with_capacity(n);
+    // Quantize all points to grid keys using flat slice access
+    let pts = points.as_flat_slice();
+    let mut keyed: Vec<(u64, u32)> = Vec::with_capacity(n);
     for i in 0..n {
-        let p = points.get(i);
-        let gx = (p[0] * inv_cell).floor() as i64;
-        let gy = (p[1] * inv_cell).floor() as i64;
-        let gz = (p[2] * inv_cell).floor() as i64;
-        // Pack into single u64 via bit interleaving (Morton code)
-        let key = morton_encode(gx, gy, gz);
-        keyed.push((key, i));
+        let b = i * 3;
+        let gx = (pts[b] * inv_cell).floor() as i64;
+        let gy = (pts[b + 1] * inv_cell).floor() as i64;
+        let gz = (pts[b + 2] * inv_cell).floor() as i64;
+        keyed.push((morton_encode(gx, gy, gz), i as u32));
     }
 
     // Sort by Morton key — points in the same cell are adjacent
@@ -86,15 +85,12 @@ fn merge_points(points: &Points<f64>, tolerance: f64) -> (Points<f64>, Vec<usize
 
     for &(key, orig_idx) in &keyed {
         if key != current_key {
-            // New unique cell
             current_key = key;
             current_idx = new_points_flat.len() / 3;
-            let p = points.get(orig_idx);
-            new_points_flat.push(p[0]);
-            new_points_flat.push(p[1]);
-            new_points_flat.push(p[2]);
+            let b = orig_idx as usize * 3;
+            new_points_flat.extend_from_slice(&pts[b..b + 3]);
         }
-        point_map[orig_idx] = current_idx;
+        point_map[orig_idx as usize] = current_idx;
     }
 
     (Points::from_flat_vec(new_points_flat), point_map)

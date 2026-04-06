@@ -16,10 +16,30 @@
 /// assert_eq!(cells.num_cells(), 2);
 /// assert_eq!(cells.cell(0), &[0, 1, 2]);
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+use std::sync::Arc;
+
+/// Storage for cell topology using offsets + connectivity arrays.
+/// Uses Arc<Vec<i64>> for zero-copy clone with copy-on-write semantics.
+#[derive(Debug)]
 pub struct CellArray {
-    offsets: Vec<i64>,
-    connectivity: Vec<i64>,
+    offsets: Arc<Vec<i64>>,
+    connectivity: Arc<Vec<i64>>,
+}
+
+impl Clone for CellArray {
+    fn clone(&self) -> Self {
+        Self {
+            offsets: Arc::clone(&self.offsets),
+            connectivity: Arc::clone(&self.connectivity),
+        }
+    }
+}
+
+impl PartialEq for CellArray {
+    fn eq(&self, other: &Self) -> bool {
+        (Arc::ptr_eq(&self.offsets, &other.offsets) || *self.offsets == *other.offsets)
+            && (Arc::ptr_eq(&self.connectivity, &other.connectivity) || *self.connectivity == *other.connectivity)
+    }
 }
 
 impl Default for CellArray {
@@ -31,8 +51,8 @@ impl Default for CellArray {
 impl CellArray {
     pub fn new() -> Self {
         Self {
-            offsets: vec![0],
-            connectivity: Vec::new(),
+            offsets: Arc::new(vec![0]),
+            connectivity: Arc::new(Vec::new()),
         }
     }
 
@@ -41,8 +61,8 @@ impl CellArray {
         assert!(!offsets.is_empty(), "offsets must have at least one element");
         assert_eq!(offsets[0], 0, "first offset must be 0");
         Self {
-            offsets,
-            connectivity,
+            offsets: Arc::new(offsets),
+            connectivity: Arc::new(connectivity),
         }
     }
 
@@ -66,8 +86,18 @@ impl CellArray {
 
     /// Append a cell with the given point indices.
     pub fn push_cell(&mut self, point_ids: &[i64]) {
-        self.connectivity.extend_from_slice(point_ids);
-        self.offsets.push(self.connectivity.len() as i64);
+        // Fast path: if sole owner, avoid Arc::make_mut's atomic CAS
+        if let Some(c) = Arc::get_mut(&mut self.connectivity) {
+            c.extend_from_slice(point_ids);
+        } else {
+            Arc::make_mut(&mut self.connectivity).extend_from_slice(point_ids);
+        }
+        let conn_len = self.connectivity.len() as i64;
+        if let Some(o) = Arc::get_mut(&mut self.offsets) {
+            o.push(conn_len);
+        } else {
+            Arc::make_mut(&mut self.offsets).push(conn_len);
+        }
     }
 
     pub fn num_cells(&self) -> usize {
@@ -99,9 +129,10 @@ impl CellArray {
     }
 
     pub fn clear(&mut self) {
-        self.offsets.clear();
-        self.offsets.push(0);
-        self.connectivity.clear();
+        let off = Arc::make_mut(&mut self.offsets);
+        off.clear();
+        off.push(0);
+        Arc::make_mut(&mut self.connectivity).clear();
     }
 
     /// Get the number of points in cell at `idx`.

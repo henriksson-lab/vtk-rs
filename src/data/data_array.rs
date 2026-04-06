@@ -1,8 +1,10 @@
+use std::sync::Arc;
 use crate::types::{Scalar, ScalarType};
 
 /// A contiguous array of tuples, where each tuple has `num_components` values.
 ///
 /// This is the fundamental data container, analogous to VTK's `vtkDataArray`.
+/// Uses `Arc<Vec<T>>` for zero-copy clone with copy-on-write semantics.
 ///
 /// # Examples
 ///
@@ -19,18 +21,36 @@ use crate::types::{Scalar, ScalarType};
 /// let scalars = DataArray::<f64>::from_vec("Temperature", vec![10.0, 20.0, 30.0], 1);
 /// assert_eq!(scalars.num_tuples(), 3);
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct DataArray<T: Scalar> {
-    data: Vec<T>,
+    data: Arc<Vec<T>>,
     num_components: usize,
     name: String,
+}
+
+impl<T: Scalar> Clone for DataArray<T> {
+    fn clone(&self) -> Self {
+        Self {
+            data: Arc::clone(&self.data),
+            num_components: self.num_components,
+            name: self.name.clone(),
+        }
+    }
+}
+
+impl<T: Scalar> PartialEq for DataArray<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.num_components == other.num_components
+            && self.name == other.name
+            && (Arc::ptr_eq(&self.data, &other.data) || *self.data == *other.data)
+    }
 }
 
 impl<T: Scalar> DataArray<T> {
     pub fn new(name: impl Into<String>, num_components: usize) -> Self {
         assert!(num_components > 0, "num_components must be > 0");
         Self {
-            data: Vec::new(),
+            data: Arc::new(Vec::new()),
             num_components,
             name: name.into(),
         }
@@ -45,7 +65,7 @@ impl<T: Scalar> DataArray<T> {
             num_components
         );
         Self {
-            data,
+            data: Arc::new(data),
             num_components,
             name: name.into(),
         }
@@ -83,18 +103,26 @@ impl<T: Scalar> DataArray<T> {
 
     pub fn tuple_mut(&mut self, idx: usize) -> &mut [T] {
         let start = idx * self.num_components;
-        &mut self.data[start..start + self.num_components]
+        let nc = self.num_components;
+        // Arc::make_mut is already optimal: no-op when strong_count == 1
+        let data = Arc::make_mut(&mut self.data);
+        &mut data[start..start + nc]
     }
 
     pub fn push_tuple(&mut self, values: &[T]) {
-        assert_eq!(
+        debug_assert_eq!(
             values.len(),
             self.num_components,
             "expected {} components, got {}",
             self.num_components,
             values.len()
         );
-        self.data.extend_from_slice(values);
+        // Fast path: if we're the sole owner, avoid Arc::make_mut's atomic CAS
+        if let Some(v) = Arc::get_mut(&mut self.data) {
+            v.extend_from_slice(values);
+        } else {
+            Arc::make_mut(&mut self.data).extend_from_slice(values);
+        }
     }
 
     pub fn as_slice(&self) -> &[T] {
@@ -102,11 +130,11 @@ impl<T: Scalar> DataArray<T> {
     }
 
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        &mut self.data
+        Arc::make_mut(&mut self.data).as_mut_slice()
     }
 
     pub fn into_vec(self) -> Vec<T> {
-        self.data
+        Arc::try_unwrap(self.data).unwrap_or_else(|arc| (*arc).clone())
     }
 
     pub fn is_empty(&self) -> bool {
@@ -147,7 +175,7 @@ impl<T: Scalar> DataArray<T> {
 
     /// Apply a function to each scalar value in-place.
     pub fn map_in_place(&mut self, f: impl Fn(T) -> T) {
-        for v in &mut self.data {
+        for v in Arc::make_mut(&mut self.data).iter_mut() {
             *v = f(*v);
         }
     }
@@ -169,7 +197,18 @@ impl<T: Scalar> DataArray<T> {
     }
 
     pub fn clear(&mut self) {
-        self.data.clear();
+        Arc::make_mut(&mut self.data).clear();
+    }
+
+    /// Returns true if this array shares storage with another clone.
+    pub fn is_shared(&self) -> bool {
+        Arc::strong_count(&self.data) > 1
+    }
+
+    /// Ensure exclusive ownership. Call before tight mutation loops to
+    /// avoid per-call Arc::make_mut atomic checks.
+    pub fn make_unique(&mut self) {
+        Arc::make_mut(&mut self.data);
     }
 
     /// Iterate over tuples as slices.
@@ -217,7 +256,7 @@ impl<T: Scalar> ExactSizeIterator for DataArrayTupleIter<'_, T> {}
 impl DataArray<f64> {
     /// Scale all values by a factor.
     pub fn scale(&mut self, factor: f64) {
-        for v in &mut self.data {
+        for v in Arc::make_mut(&mut self.data).iter_mut() {
             *v *= factor;
         }
     }
@@ -227,13 +266,13 @@ impl DataArray<f64> {
     pub fn normalize(&mut self) -> (f64, f64) {
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
-        for &v in &self.data {
+        for &v in self.data.iter() {
             min = min.min(v);
             max = max.max(v);
         }
         let range = max - min;
         if range > 1e-15 {
-            for v in &mut self.data {
+            for v in Arc::make_mut(&mut self.data).iter_mut() {
                 *v = (*v - min) / range;
             }
         }
@@ -285,7 +324,7 @@ impl DataArray<f64> {
     pub fn concat(&self, other: &DataArray<f64>) -> DataArray<f64> {
         assert_eq!(self.num_components, other.num_components,
             "cannot concatenate arrays with different component counts");
-        let mut data = self.data.clone();
+        let mut data = (*self.data).clone();
         data.extend_from_slice(&other.data);
         DataArray::from_vec(self.name(), data, self.num_components)
     }
@@ -293,7 +332,7 @@ impl DataArray<f64> {
     /// Append another array's tuples to this array.
     pub fn extend(&mut self, other: &DataArray<f64>) {
         assert_eq!(self.num_components, other.num_components);
-        self.data.extend_from_slice(&other.data);
+        Arc::make_mut(&mut self.data).extend_from_slice(&other.data);
     }
 
     /// Create a new array by combining components from multiple 1-component arrays.
@@ -318,7 +357,7 @@ impl DataArray<f64> {
 impl DataArray<f32> {
     /// Scale all values by a factor.
     pub fn scale(&mut self, factor: f32) {
-        for v in &mut self.data {
+        for v in Arc::make_mut(&mut self.data).iter_mut() {
             *v *= factor;
         }
     }
