@@ -1,6 +1,6 @@
 # vtk-pure-rs
 
-A pure Rust reimplementation of [VTK](https://vtk.org/) (The Visualization Toolkit). Not an FFI binding — a ground-up Rust implementation of VTK's core concepts.
+A pure Rust reimplementation of [VTK 9.6](https://vtk.org/) (The Visualization Toolkit). Translated from the C++ VTK 9.6.0 source ([Kitware/VTK@`00f9418c`](https://github.com/Kitware/VTK/commit/00f9418ca61fa2d3cd75ae78c3978b18fdce12f2)). Not an FFI binding — a ground-up Rust implementation of VTK's core concepts.
 
 **~300K lines of Rust | 5184 features | 575+ tests | 22 I/O formats | wgpu rendering**
 
