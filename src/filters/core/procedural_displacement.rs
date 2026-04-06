@@ -1,6 +1,6 @@
 //! Procedural noise-based vertex displacement.
 
-use crate::data::{AnyDataArray, DataArray, Points, PolyData};
+use crate::data::{Points, PolyData};
 
 /// Displace vertices along normals by multi-octave noise.
 pub fn fbm_displace(mesh: &PolyData, amplitude: f64, frequency: f64, octaves: usize, seed: u64) -> PolyData {

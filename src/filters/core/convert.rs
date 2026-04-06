@@ -271,7 +271,7 @@ pub fn structured_grid_to_image_data(sg: &StructuredGrid) -> Option<ImageData> {
         return None;
     }
 
-    let mut img = ImageData::with_dimensions(dims[0], dims[1], dims[2])
+    let img = ImageData::with_dimensions(dims[0], dims[1], dims[2])
         .with_spacing(spacing)
         .with_origin(p000);
     Some(img)

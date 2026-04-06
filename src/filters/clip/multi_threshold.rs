@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{AnyDataArray, CellArray, DataArray, PolyData};
 
 /// A threshold interval with optional label.
 #[derive(Debug, Clone)]

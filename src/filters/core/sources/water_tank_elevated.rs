@@ -4,7 +4,7 @@ pub fn elevated_spherical_tank(tank_r: f64, tower_h: f64, num_legs: usize, resol
     let res=resolution.max(8);let nl=num_legs.max(3);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Sphere (two hemispheres)
-    let vres=res/2;
+    let _vres=res/2;
     for iv in 0..=res{let v=std::f64::consts::PI*iv as f64/res as f64;
         let sv=v.sin();let cv=v.cos();
         for iu in 0..=res{let u=2.0*std::f64::consts::PI*iu as f64/res as f64;

@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn fcc_lattice(a: f64, nx: usize, ny: usize, nz: usize, atom_r: f64) -> PolyData {
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
-    let mut add_atom=|pts:&mut Points<f64>,polys:&mut CellArray,x:f64,y:f64,z:f64|{
+    let add_atom=|pts:&mut Points<f64>,polys:&mut CellArray,x:f64,y:f64,z:f64|{
         let ab=pts.len();let r=atom_r;
         pts.push([x+r,y,z]);pts.push([x-r,y,z]);pts.push([x,y+r,z]);
         pts.push([x,y-r,z]);pts.push([x,y,z+r]);pts.push([x,y,z-r]);

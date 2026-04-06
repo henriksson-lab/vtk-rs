@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn synchrotron_ring(ring_r: f64, tunnel_r: f64, num_magnets: usize, resolution: usize) -> PolyData {
     let res=resolution.max(num_magnets*4);let tres=resolution.max(6);let nm=num_magnets.max(4);
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Beam pipe (torus)
     for iv in 0..res{let v=2.0*std::f64::consts::PI*iv as f64/res as f64;
         let cx=(ring_r)*v.cos();let cy=(ring_r)*v.sin();

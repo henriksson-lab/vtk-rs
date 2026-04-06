@@ -12,7 +12,7 @@ pub fn oil_platform(deck_w: f64, deck_d: f64, deck_h: f64, leg_height: f64, num_
     polys.push_cell(&[f(0),f(1),f(5),f(4)]);polys.push_cell(&[f(2),f(3),f(7),f(6)]);
     polys.push_cell(&[f(0),f(4),f(7),f(3)]);polys.push_cell(&[f(1),f(2),f(6),f(5)]);
     // Legs
-    let nl=num_legs.max(4);let leg_r=deck_w.min(deck_d)*0.05;
+    let nl=num_legs.max(4);let _leg_r=deck_w.min(deck_d)*0.05;
     for li in 0..nl{let t=li as f64/(nl-1).max(1) as f64;
         let x=-hw*0.8+deck_w*0.8*t;
         for &y in &[-hd*0.8,hd*0.8]{

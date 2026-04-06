@@ -15,7 +15,7 @@ pub fn spiral_staircase(inner_radius: f64, outer_radius: f64, height: f64, steps
         polys.push_cell(&[b as i64,(b+1) as i64,(b+2) as i64,(b+3) as i64]);
     }
     // Central pole
-    let bc=pts.len();pts.push([0.0,0.0,0.0]);pts.push([0.0,0.0,height]);
+    let _bc=pts.len();pts.push([0.0,0.0,0.0]);pts.push([0.0,0.0,height]);
     let mut r=PolyData::new();r.points=pts;r.polys=polys;r
 }
 #[cfg(test)] mod tests { use super::*;

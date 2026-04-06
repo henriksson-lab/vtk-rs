@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// Loop subdivision but using the butterfly stencil for smoother interpolation
 /// on irregular meshes. Falls back to midpoint for boundary edges.
 pub fn subdivide_butterfly(input: &PolyData) -> PolyData {
-    let n = input.points.len();
+    let _n = input.points.len();
     let mut points = input.points.clone();
     let mut new_tris: Vec<[i64; 3]> = Vec::new();
 

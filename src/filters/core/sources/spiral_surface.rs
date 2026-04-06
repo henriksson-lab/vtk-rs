@@ -1,6 +1,6 @@
 //! Spiral surface geometry source.
 
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{CellArray, Points, PolyData};
 
 /// Generate a spiral surface (like a nautilus shell cross-section extruded).
 pub fn spiral_surface(

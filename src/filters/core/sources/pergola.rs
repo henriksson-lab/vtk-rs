@@ -3,7 +3,7 @@ use crate::data::{CellArray, Points, PolyData};
 pub fn pergola(width: f64, depth: f64, height: f64, num_pillars_w: usize, num_rafters: usize) -> PolyData {
     let npw=num_pillars_w.max(2);let nr=num_rafters.max(2);
     let pw=width*0.04;
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let _lines=CellArray::new();
     let add_box=|pts:&mut Points<f64>,polys:&mut CellArray,x0:f64,y0:f64,z0:f64,x1:f64,y1:f64,z1:f64|{
         let b=pts.len();
         pts.push([x0,y0,z0]);pts.push([x1,y0,z0]);pts.push([x1,y1,z0]);pts.push([x0,y1,z0]);

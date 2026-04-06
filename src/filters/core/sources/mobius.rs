@@ -1,5 +1,5 @@
 use std::f64::consts::PI;
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{CellArray, Points, PolyData};
 
 /// Parameters for generating a Möbius strip.
 pub struct MobiusParams {

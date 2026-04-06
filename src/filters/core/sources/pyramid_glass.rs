@@ -1,7 +1,7 @@
 //! Glass pyramid (Louvre-style) geometry.
 use crate::data::{CellArray, Points, PolyData};
 pub fn glass_pyramid(base: f64, height: f64, segments: usize) -> PolyData {
-    let ns=segments.max(1);let hb=base/2.0;let step=base/ns as f64;
+    let ns=segments.max(1);let hb=base/2.0;let _step=base/ns as f64;
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Frame edges (wireframe pyramid with horizontal rings)
     pts.push([0.0,0.0,height]); // apex

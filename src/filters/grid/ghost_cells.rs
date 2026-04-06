@@ -4,7 +4,7 @@
 //! are needed at partition boundaries to compute correct normals, gradients,
 //! and other operations that require neighbor information.
 
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{AnyDataArray, DataArray, PolyData};
 
 /// Generate ghost cells for a partitioned mesh.
 ///
@@ -40,7 +40,7 @@ pub fn generate_ghost_cells(mesh: &PolyData) -> PolyData {
     }
 
     // Find boundary cells: cells that share a point with a cell in a different region
-    let mut ghost_level = vec![0.0f64; n_cells];
+    let ghost_level = vec![0.0f64; n_cells];
     let mut is_boundary_cell = vec![false; n_cells];
 
     for ci in 0..n_cells {

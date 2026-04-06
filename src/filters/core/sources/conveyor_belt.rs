@@ -3,7 +3,7 @@ use crate::data::{CellArray, Points, PolyData};
 pub fn conveyor_belt(length: f64, width: f64, roller_radius: f64, resolution: usize) -> PolyData {
     let res=resolution.max(4);let half_l=length/2.0;let hw=width/2.0;
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();
-    let total=res*2+2;// top straight + left arc + bottom straight + right arc
+    let _total=res*2+2;// top straight + left arc + bottom straight + right arc
     let mut profile=Vec::new();
     // Top straight
     let top_n=res/2;for i in 0..=top_n{let t=i as f64/top_n as f64;

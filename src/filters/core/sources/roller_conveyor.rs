@@ -17,7 +17,7 @@ pub fn roller_conveyor(length: f64, width: f64, roller_r: f64, roller_spacing: f
         // Actually rollers go along Y, so fix coordinates
         let rb2=pts.len()-(res*2);
         for ring in 0..=1{for i in 0..res{let idx=rb2+ring*res+i;
-            let p=pts.get(idx);let y_pos=if ring==0{-hw}else{hw};
+            let _p=pts.get(idx);let _y_pos=if ring==0{-hw}else{hw};
             // Already pushed, just connect
         }}
         // Connect rings

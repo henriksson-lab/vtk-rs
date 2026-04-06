@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, DataArray, PolyData, DataSet};
+use crate::data::{AnyDataArray, DataArray, PolyData};
 
 /// Add bounding box coordinates as point data scalars.
 ///

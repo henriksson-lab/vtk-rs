@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn modern_wind_turbine(tower_height: f64, blade_length: f64, num_blades: usize, tower_base_r: f64, tower_top_r: f64, resolution: usize) -> PolyData {
     let res=resolution.max(8);let nb=num_blades.max(2);
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Tapered tower
     let nsec=6;
     for is in 0..=nsec{let t=is as f64/nsec as f64;

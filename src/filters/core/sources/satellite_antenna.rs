@@ -30,7 +30,7 @@ pub fn satellite_antenna(diameter: f64, focal_length: f64, n_ribs: usize, n_ring
     }
     // Rib lines
     for rib in 0..nr {
-        let a = 2.0 * std::f64::consts::PI * rib as f64 / nr as f64;
+        let _a = 2.0 * std::f64::consts::PI * rib as f64 / nr as f64;
         for ring in 0..nrings {
             let idx = if ring == 0 { 0 } else { 1 + (ring-1) * nr + rib };
             let next = 1 + ring * nr + rib;

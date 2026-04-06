@@ -46,7 +46,7 @@ pub fn parse_citygml_string(xml: &str) -> Result<PolyData, VtkError> {
         let coords = parse_pos_list(text);
 
         if coords.len() >= 3 {
-            let base = points.len() as i64;
+            let _base = points.len() as i64;
             let mut cell_ids = Vec::new();
             for pt in &coords {
                 cell_ids.push(points.len() as i64);

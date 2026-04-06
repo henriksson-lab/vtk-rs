@@ -1,7 +1,7 @@
 //! Deployable solar panel array (accordion fold).
 use crate::data::{CellArray, Points, PolyData};
 
-pub fn solar_panel_array(panel_width: f64, panel_height: f64, n_panels: usize) -> PolyData {
+pub fn solar_panel_array(panel_width: f64, _panel_height: f64, n_panels: usize) -> PolyData {
     let np = n_panels.max(2);
     let hw = panel_width / 2.0;
     let gap = panel_width * 0.02;

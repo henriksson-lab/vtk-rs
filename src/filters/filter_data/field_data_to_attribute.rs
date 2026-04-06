@@ -1,4 +1,4 @@
-use crate::data::{PolyData, DataObject};
+use crate::data::PolyData;
 
 /// Copy a named array from field data to point data.
 ///

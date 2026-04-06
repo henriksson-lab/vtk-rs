@@ -13,7 +13,7 @@ pub fn virus_capsid(radius: f64, spike_height: f64, num_spikes: usize, resolutio
     for iv in 0..vres{for iu in 0..res{
         polys.push_cell(&[(iv*w+iu) as i64,(iv*w+iu+1) as i64,((iv+1)*w+iu+1) as i64,((iv+1)*w+iu) as i64]);}}
     // Spikes (small cones protruding from surface)
-    let ns=num_spikes.min(vres*res);let spike_r=radius*0.05;
+    let ns=num_spikes.min(vres*res);let _spike_r=radius*0.05;
     let mut rng=42u64;
     for _ in 0..ns{
         rng=rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);

@@ -32,7 +32,7 @@ pub fn catmull_clark(input: &PolyData) -> PolyData {
 
     // 3. Compute edge points: avg of edge endpoints + adjacent face points
     let mut edge_point_map: HashMap<(i64,i64), usize> = HashMap::new();
-    let mut new_points: Vec<[f64; 3]> = Vec::new();
+    let _new_points: Vec<[f64; 3]> = Vec::new();
 
     // Reserve slots for: original points (updated), face points, edge points
     // Start: copy original points (will update later)
@@ -43,7 +43,7 @@ pub fn catmull_clark(input: &PolyData) -> PolyData {
     out_pts.extend_from_slice(&face_points);
 
     // Add edge points
-    let edge_pt_start = out_pts.len();
+    let _edge_pt_start = out_pts.len();
     for (&(a, b), faces) in &edge_faces {
         let pa = input.points.get(a as usize);
         let pb = input.points.get(b as usize);

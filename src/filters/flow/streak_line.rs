@@ -34,7 +34,7 @@ pub fn streak_lines(
     struct Particle {
         pos: [f64; 3],
         seed_idx: usize,
-        birth_time: usize,
+        _birth_time: usize,
         alive: bool,
     }
 
@@ -57,7 +57,7 @@ pub fn streak_lines(
             all_particles.push(Particle {
                 pos: *seed,
                 seed_idx: si,
-                birth_time: fi,
+                _birth_time: fi,
                 alive: true,
             });
         }

@@ -1,6 +1,6 @@
 //! Ferris wheel geometry.
 use crate::data::{CellArray, Points, PolyData};
-pub fn ferris_wheel(radius: f64, num_gondolas: usize, gondola_size: f64, hub_height: f64, resolution: usize) -> PolyData {
+pub fn ferris_wheel(radius: f64, num_gondolas: usize, gondola_size: f64, hub_height: f64, _resolution: usize) -> PolyData {
     let ng=num_gondolas.max(4);
     let mut pts=Points::<f64>::new();let mut lines=CellArray::new();let mut polys=CellArray::new();
     // Support structure (A-frame)

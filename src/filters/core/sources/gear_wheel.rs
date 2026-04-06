@@ -6,7 +6,7 @@ use crate::data::{CellArray, Points, PolyData};
 pub fn gear_wheel(num_teeth: usize, outer_radius: f64, inner_radius: f64, tooth_height: f64, thickness: f64, resolution: usize) -> PolyData {
     let teeth = num_teeth.max(3);
     let res_per_tooth = resolution.max(2);
-    let total_pts = teeth * res_per_tooth * 2;
+    let _total_pts = teeth * res_per_tooth * 2;
     let half_h = thickness / 2.0;
 
     let mut pts = Points::<f64>::new();

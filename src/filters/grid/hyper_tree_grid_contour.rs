@@ -2,7 +2,7 @@
 //!
 //! Extracts contour lines/surfaces at scalar isovalues on the coarse grid.
 
-use crate::data::{AnyDataArray, CellArray, DataArray, HyperTreeGrid, Points, PolyData};
+use crate::data::{CellArray, HyperTreeGrid, Points, PolyData};
 
 /// Extract contour at an isovalue from HyperTreeGrid cell data.
 ///
@@ -44,7 +44,7 @@ pub fn hyper_tree_grid_contour(htg: &HyperTreeGrid, array_name: &str, isovalue: 
                 if (v0 - isovalue) * (v1 - isovalue) >= 0.0 { continue; }
 
                 let t = (isovalue - v0) / (v1 - v0);
-                let x = origin[0] + (i as f64 + 1.0 + t - 0.5) * spacing[0]; // approximate
+                let _x = origin[0] + (i as f64 + 1.0 + t - 0.5) * spacing[0]; // approximate
                 let x = origin[0] + (i + 1) as f64 * spacing[0]; // exact interface
                 let y0 = origin[1] + j as f64 * spacing[1];
                 let y1 = y0 + spacing[1];

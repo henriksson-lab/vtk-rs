@@ -1,6 +1,6 @@
 //! Modular orbital space station with multiple module types.
 use crate::data::{CellArray, Points, PolyData};
-pub fn orbital_station(hub_r: f64, spoke_count: usize, spoke_l: f64, module_r: f64, module_l: f64, ring_r: f64, resolution: usize) -> PolyData {
+pub fn orbital_station(hub_r: f64, spoke_count: usize, spoke_l: f64, module_r: f64, _module_l: f64, ring_r: f64, resolution: usize) -> PolyData {
     let res=resolution.max(6);let ns=spoke_count.max(2);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Central hub (cylinder)

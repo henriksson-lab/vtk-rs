@@ -1,5 +1,4 @@
 use crate::data::{CellArray, Points, PolyData};
-use std::collections::HashMap;
 
 /// Compute the dual mesh of a triangle mesh.
 ///

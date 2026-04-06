@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn space_shuttle(orbiter_l: f64, orbiter_r: f64, tank_r: f64, tank_l: f64, booster_r: f64, booster_l: f64, resolution: usize) -> PolyData {
     let res=resolution.max(8);
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Orbiter fuselage
     let nseg=8;let ol2=orbiter_l/2.0;
     for is in 0..=nseg{let t=is as f64/nseg as f64;let x=-ol2+orbiter_l*t;

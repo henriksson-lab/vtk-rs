@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{AnyDataArray, DataArray, PolyData};
 
 /// Merge coplanar adjacent faces into larger polygons.
 ///

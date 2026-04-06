@@ -1,5 +1,4 @@
-use std::f64::consts::PI;
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::PolyData;
 
 /// Parameters for generating a 3D ring (thick circle / tube bent into a circle).
 pub struct RingParams {

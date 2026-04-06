@@ -1,4 +1,4 @@
-use crate::data::{CellArray, Points, PolyData, Selection, SelectionContentType, SelectionFieldType};
+use crate::data::{PolyData, Selection, SelectionContentType, SelectionFieldType};
 
 /// Apply a Selection to a PolyData to extract the selected subset.
 ///

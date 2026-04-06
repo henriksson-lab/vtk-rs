@@ -9,7 +9,7 @@ use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
 ///
 /// Points are projected to the XY plane. The result is clipped to a
 /// bounding rectangle with the given `padding` around the point set.
-pub fn voronoi_2d(input: &PolyData, padding: f64) -> PolyData {
+pub fn voronoi_2d(input: &PolyData, _padding: f64) -> PolyData {
     let n = input.points.len();
     if n < 3 {
         return PolyData::new();

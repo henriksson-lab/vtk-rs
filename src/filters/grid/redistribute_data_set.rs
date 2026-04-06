@@ -2,7 +2,7 @@
 //!
 //! Splits a mesh into balanced partitions using spatial sorting.
 
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{CellArray, Points, PolyData};
 
 /// Redistribute a PolyData into N roughly equal-sized partitions.
 ///
@@ -57,8 +57,8 @@ pub fn redistribute_cells(mesh: &PolyData, n_partitions: usize) -> Vec<PolyData>
     let all_cells: Vec<Vec<i64>> = mesh.polys.iter().map(|c| c.to_vec()).collect();
     let mut centroids: Vec<(usize, f64)> = Vec::with_capacity(n_cells);
 
-    let mut min_v = f64::MAX;
-    let mut max_v = f64::MIN;
+    let _min_v = f64::MAX;
+    let _max_v = f64::MIN;
     // Find longest axis from bounding box
     let mut bb_min = mesh.points.get(0);
     let mut bb_max = bb_min;

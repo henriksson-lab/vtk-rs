@@ -3,7 +3,7 @@ use crate::data::{CellArray, Points, PolyData};
 
 pub fn sandcastle(base_size: f64, tower_height: f64, na: usize) -> PolyData {
     let na = na.max(8);
-    let hs = base_size / 2.0;
+    let _hs = base_size / 2.0;
     let mut pts = Points::<f64>::new();
     let mut polys = CellArray::new();
     // Base mound (truncated cone)

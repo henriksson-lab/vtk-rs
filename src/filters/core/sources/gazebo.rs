@@ -10,7 +10,7 @@ pub fn gazebo(radius: f64, height: f64, roof_height: f64, num_pillars: usize, re
     for i in 0..res{let j=if i+1<res{fc+2+i}else{fc+1};
         polys.push_cell(&[fc as i64,(fc+1+i) as i64,j as i64]);}
     // Pillars
-    let pillar_r=radius*0.05;
+    let _pillar_r=radius*0.05;
     for pi in 0..np{let a=2.0*std::f64::consts::PI*pi as f64/np as f64;
         let x=radius*0.95*a.cos();let y=radius*0.95*a.sin();
         let pb=pts.len();pts.push([x,y,0.0]);pts.push([x,y,height]);

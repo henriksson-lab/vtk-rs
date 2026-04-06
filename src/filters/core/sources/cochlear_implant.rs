@@ -1,7 +1,7 @@
 //! Cochlear implant (electrode array spiral).
 use crate::data::{CellArray, Points, PolyData};
-pub fn cochlear_implant(spiral_r: f64, turns: f64, num_electrodes: usize, electrode_r: f64, wire_r: f64, resolution: usize) -> PolyData {
-    let res=resolution.max(4);let ne=num_electrodes.max(4);
+pub fn cochlear_implant(spiral_r: f64, turns: f64, num_electrodes: usize, electrode_r: f64, _wire_r: f64, resolution: usize) -> PolyData {
+    let _res=resolution.max(4);let ne=num_electrodes.max(4);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Carrier wire (spiral)
     let total_steps=ne*4;

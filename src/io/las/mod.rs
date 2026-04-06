@@ -19,7 +19,7 @@ pub fn read_las<R: Read + Seek>(reader: &mut R) -> Result<PolyData, String> {
     let mut header = [0u8; 223]; // remaining header bytes (after signature)
     reader.read_exact(&mut header).map_err(|e| e.to_string())?;
 
-    let point_format = header[100]; // offset 104 from start - 4
+    let _point_format = header[100]; // offset 104 from start - 4
     let point_record_len = u16::from_le_bytes([header[101], header[102]]);
     let num_points = u32::from_le_bytes([header[103], header[104], header[105], header[106]]) as usize;
     let offset_to_data = u32::from_le_bytes([header[92], header[93], header[94], header[95]]) as u64;

@@ -32,8 +32,8 @@ pub fn ballista(frame_length: f64, arm_span: f64) -> PolyData {
         for i in 0..na { lines.push_cell(&[(arm_base+i) as i64, (arm_base+i+1) as i64]); }
     }
     // Bowstring
-    let left_tip = pts.len() - na - 1 + na; // approximate
-    let right_tip = pts.len() - 1;
+    let _left_tip = pts.len() - na - 1 + na; // approximate
+    let _right_tip = pts.len() - 1;
     // Track/slide
     let s0=pts.len(); pts.push([-fl*0.1,0.0,h*0.8]);
     let s1=pts.len(); pts.push([fl*0.4,0.0,h*0.8]);

@@ -13,8 +13,8 @@ pub fn hex_telescope_array(segment_radius: f64, n_rings: usize) -> PolyData {
     for ring in 1..=nr {
         for side in 0..6 {
             for step in 0..ring {
-                let a0 = std::f64::consts::PI / 3.0 * side as f64;
-                let a1 = std::f64::consts::PI / 3.0 * ((side + 2) % 6) as f64;
+                let _a0 = std::f64::consts::PI / 3.0 * side as f64;
+                let _a1 = std::f64::consts::PI / 3.0 * ((side + 2) % 6) as f64;
                 let cx = ring as f64 * dx * (std::f64::consts::PI / 3.0 * side as f64 + std::f64::consts::PI / 6.0).cos()
                     + step as f64 * dx * (std::f64::consts::PI / 3.0 * ((side + 2) % 6) as f64 + std::f64::consts::PI / 6.0).cos();
                 let cy = ring as f64 * dy * 2.0 / 3.0 * (std::f64::consts::PI / 3.0 * side as f64 + std::f64::consts::PI / 6.0).sin()

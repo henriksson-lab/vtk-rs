@@ -13,7 +13,7 @@ pub fn amphora(height: f64, na: usize) -> PolyData {
     ];
     let mut pts = Points::<f64>::new();
     let mut polys = CellArray::new();
-    for (pi, &(rf, hf)) in profile.iter().enumerate() {
+    for (_pi, &(rf, hf)) in profile.iter().enumerate() {
         let r = rf * height;
         let z = hf * height;
         if r < 1e-10 {

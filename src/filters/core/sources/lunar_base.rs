@@ -1,6 +1,6 @@
 //! Lunar base geometry (habitation domes + solar array + landing pad).
 use crate::data::{CellArray, Points, PolyData};
-pub fn lunar_base(dome_r: f64, num_domes: usize, corridor_l: f64, pad_r: f64, resolution: usize) -> PolyData {
+pub fn lunar_base(dome_r: f64, num_domes: usize, _corridor_l: f64, pad_r: f64, resolution: usize) -> PolyData {
     let res=resolution.max(8);let nd=num_domes.max(1);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Habitation domes (hemispherical)

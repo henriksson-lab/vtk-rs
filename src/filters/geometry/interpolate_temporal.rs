@@ -3,7 +3,7 @@
 //! Supports linear, cubic, and nearest-neighbor interpolation of
 //! positions and scalar data between time steps.
 
-use crate::data::{AnyDataArray, DataArray, Points, PolyData, TemporalDataSet};
+use crate::data::{AnyDataArray, DataArray, PolyData, TemporalDataSet};
 
 /// Interpolation mode for temporal data.
 #[derive(Debug, Clone, Copy)]

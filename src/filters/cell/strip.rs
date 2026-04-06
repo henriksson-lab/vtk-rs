@@ -88,7 +88,7 @@ pub fn to_triangle_strips(input: &PolyData) -> PolyData {
         visited[start] = true;
 
         let tri = &tri_verts[start];
-        let strip_start = strip_conn.len();
+        let _strip_start = strip_conn.len();
         strip_conn.push(tri[0]);
         strip_conn.push(tri[1]);
         strip_conn.push(tri[2]);

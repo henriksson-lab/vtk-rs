@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn dental_implant(implant_r: f64, implant_l: f64, abutment_h: f64, crown_r: f64, crown_h: f64, thread_count: usize, resolution: usize) -> PolyData {
     let res=resolution.max(8);let nt=thread_count.max(3);
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Implant screw (tapered cylinder with thread grooves)
     let nseg=8;
     for is in 0..=nseg{let t=is as f64/nseg as f64;let z=-t*implant_l;

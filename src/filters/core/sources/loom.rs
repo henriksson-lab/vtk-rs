@@ -3,7 +3,7 @@ use crate::data::{CellArray, Points, PolyData};
 
 pub fn loom(width: f64, height: f64, depth: f64, n_warp: usize) -> PolyData {
     let nw = n_warp.max(5);
-    let hw = width / 2.0; let hh = height / 2.0;
+    let hw = width / 2.0; let _hh = height / 2.0;
     let mut pts = Points::<f64>::new();
     let mut lines = CellArray::new();
     let mut polys = CellArray::new();

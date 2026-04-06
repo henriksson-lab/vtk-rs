@@ -6,7 +6,7 @@ pub fn zeppelin(length: f64, diameter: f64, na: usize, ns: usize) -> PolyData {
     let r = diameter / 2.0;
     let mut pts = Points::<f64>::new();
     let mut polys = CellArray::new();
-    let mut lines = CellArray::new();
+    let lines = CellArray::new();
     // Envelope (ellipsoid-like)
     let top = pts.len(); pts.push([length / 2.0, 0.0, 0.0]); // nose
     for s in 1..ns {

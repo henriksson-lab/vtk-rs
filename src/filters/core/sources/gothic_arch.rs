@@ -8,11 +8,11 @@ pub fn gothic_arch(width: f64, height: f64, thickness: f64, resolution: usize) -
     // Two arcs meeting at top
     let start_angle=((hw)/(radius)).asin();
     for side in [-1.0f64,1.0]{
-        let cx=side*hw;let cy=-center_offset;
+        let _cx=side*hw;let _cy=-center_offset;
         let n=res/2;
         for i in 0..=n{
             let t=i as f64/n as f64;
-            let a=if side<0.0{std::f64::consts::FRAC_PI_2-start_angle+t*(start_angle)}
+            let _a=if side<0.0{std::f64::consts::FRAC_PI_2-start_angle+t*(start_angle)}
                 else{std::f64::consts::FRAC_PI_2+t*start_angle-start_angle};
             // Simplified: just use parabolic arch
             let x=hw*side*(1.0-t);let y=height*(1.0-(1.0-t).powi(2));

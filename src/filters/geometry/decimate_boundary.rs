@@ -1,5 +1,5 @@
 use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Identify and mark boundary points on a mesh.
 ///

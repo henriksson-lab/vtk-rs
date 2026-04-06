@@ -37,7 +37,7 @@ pub fn aggregate(input: &PolyData, array_name: &str) -> Table {
     let values = vec![
         n as f64, min_v, max_v, mean, sum, variance, std_dev,
     ];
-    let names = vec![
+    let _names = vec![
         "count", "min", "max", "mean", "sum", "variance", "std_dev",
     ];
 

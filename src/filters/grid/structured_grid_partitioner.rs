@@ -1,6 +1,6 @@
 //! Partition structured grids into sub-grids.
 
-use crate::data::{AnyDataArray, DataArray, StructuredGrid, Points};
+use crate::data::{AnyDataArray, DataArray, StructuredGrid};
 
 /// Partition a StructuredGrid into N sub-grids along the longest dimension.
 ///

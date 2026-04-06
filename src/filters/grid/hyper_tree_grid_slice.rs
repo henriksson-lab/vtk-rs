@@ -108,7 +108,7 @@ pub fn hyper_tree_grid_slice(
                         angle_a.partial_cmp(&angle_b).unwrap_or(std::cmp::Ordering::Equal)
                     });
 
-                    let base_idx = all_points.len();
+                    let _base_idx = all_points.len();
                     let mut ids = Vec::new();
                     for pt in &intersection_pts {
                         ids.push(all_points.len() as i64);

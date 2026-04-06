@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn windmill(tower_height: f64, tower_radius: f64, blade_length: f64, blade_width: f64, num_blades: usize, resolution: usize) -> PolyData {
     let res=resolution.max(6);let nb=num_blades.max(2);
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Tower (tapered)
     let top_r=tower_radius*0.6;
     for ring in 0..=1{let t=ring as f64;let r=tower_radius*(1.0-t)+top_r*t;let z=t*tower_height;

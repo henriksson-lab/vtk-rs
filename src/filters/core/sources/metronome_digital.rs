@@ -19,7 +19,7 @@ pub fn tuning_peg(shaft_length: f64, head_diameter: f64, na: usize) -> PolyData 
         }
     }
     // Head (flat disk perpendicular to shaft)
-    let hb = pts.len();
+    let _hb = pts.len();
     let hc = pts.len(); pts.push([0.0, 0.0, shaft_length]);
     for j in 0..na { let a=2.0*std::f64::consts::PI*j as f64/na as f64;
         pts.push([head_r*a.cos(), 0.0, shaft_length + head_r*a.sin()]); }

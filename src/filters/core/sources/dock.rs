@@ -1,6 +1,6 @@
 //! Dock/pier geometry extending over water.
 use crate::data::{CellArray, Points, PolyData};
-pub fn dock(length: f64, width: f64, height: f64, num_pilings: usize, piling_radius: f64) -> PolyData {
+pub fn dock(length: f64, width: f64, height: f64, num_pilings: usize, _piling_radius: f64) -> PolyData {
     let hw=width/2.0;let np=num_pilings.max(2);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Deck

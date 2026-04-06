@@ -5,7 +5,7 @@ pub fn abacus(width: f64, height: f64, n_rods: usize, beads_per_rod: usize, na: 
     let nr = n_rods.max(3); let nb = beads_per_rod.max(3); let na = na.max(6);
     let hw = width / 2.0; let hh = height / 2.0;
     let mut pts = Points::<f64>::new();
-    let mut polys = CellArray::new();
+    let polys = CellArray::new();
     let mut lines = CellArray::new();
     // Frame
     let f0 = pts.len(); pts.push([-hw, 0.0, -hh]);

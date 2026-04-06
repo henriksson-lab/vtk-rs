@@ -1,6 +1,6 @@
 //! Gear rack (linear gear teeth) geometry.
 use crate::data::{CellArray, Points, PolyData};
-pub fn gear_rack(num_teeth: usize, tooth_height: f64, tooth_width: f64, base_height: f64, thickness: f64, length: f64) -> PolyData {
+pub fn gear_rack(num_teeth: usize, tooth_height: f64, _tooth_width: f64, base_height: f64, thickness: f64, length: f64) -> PolyData {
     let nt=num_teeth.max(1);let tw=length/nt as f64;let ht=thickness/2.0;
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();
     // Profile: zigzag teeth on top of a rectangle

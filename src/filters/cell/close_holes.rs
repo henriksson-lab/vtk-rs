@@ -1,4 +1,4 @@
-use crate::data::{CellArray, Points, PolyData};
+use crate::data::PolyData;
 use std::collections::HashMap;
 
 /// Close all boundary loops in a mesh by capping them with fan triangulation.

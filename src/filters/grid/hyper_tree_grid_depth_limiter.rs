@@ -3,7 +3,7 @@
 //! Since the internal tree structure is private, this operates by
 //! reporting depth information and creating a new coarser HTG.
 
-use crate::data::{AnyDataArray, DataArray, HyperTreeGrid, ImageData};
+use crate::data::{HyperTreeGrid, ImageData};
 
 /// Get the maximum tree depth across all trees.
 pub fn htg_max_depth(htg: &HyperTreeGrid) -> usize {

@@ -1,4 +1,4 @@
-use crate::data::{CellArray, PolyData, Points};
+use crate::data::{CellArray, PolyData};
 
 /// Extract the volume (surface) between two isovalues.
 ///

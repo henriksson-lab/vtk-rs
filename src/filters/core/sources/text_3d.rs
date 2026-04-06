@@ -65,7 +65,7 @@ pub fn text_3d(params: &Text3dParams) -> PolyData {
                 }
             } else {
                 // Flat text: create line
-                let base = points.len() as i64;
+                let _base = points.len() as i64;
                 let mut ids = Vec::new();
                 for &(x, y) in stroke {
                     let idx = points.len() as i64;

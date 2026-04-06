@@ -57,6 +57,7 @@ pub fn write_geojson<W: Write>(w: &mut W, mesh: &PolyData) -> std::io::Result<()
 }
 
 /// Write GeoJSON to a file path.
+#[allow(dead_code)]
 pub fn write_geojson_file(mesh: &PolyData, path: &std::path::Path) -> Result<(), String> {
     let file = std::fs::File::create(path).map_err(|e| e.to_string())?;
     let mut w = std::io::BufWriter::new(file);

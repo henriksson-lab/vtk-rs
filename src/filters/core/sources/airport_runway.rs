@@ -8,7 +8,7 @@ pub fn runway(length: f64, width: f64, marking_count: usize) -> PolyData {
     pts.push([-hl,-hw,0.0]);pts.push([hl,-hw,0.0]);pts.push([hl,hw,0.0]);pts.push([-hl,hw,0.0]);
     polys.push_cell(&[rb as i64,(rb+1) as i64,(rb+2) as i64,(rb+3) as i64]);
     // Center line markings
-    let mw=width*0.02;let ml=length*0.04;let gap=length*0.03;
+    let mw=width*0.02;let ml=length*0.04;let _gap=length*0.03;
     let nm=marking_count.max(1);
     for mi in 0..nm{let x=-hl*0.8+(mi as f64/(nm as f64))*(length*0.8);
         let mb=pts.len();

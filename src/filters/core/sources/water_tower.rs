@@ -1,6 +1,6 @@
 //! Water tower geometry (tank on stilts).
 use crate::data::{CellArray, Points, PolyData};
-pub fn water_tower(tank_radius: f64, tank_height: f64, leg_height: f64, num_legs: usize, leg_radius: f64, resolution: usize) -> PolyData {
+pub fn water_tower(tank_radius: f64, tank_height: f64, leg_height: f64, num_legs: usize, _leg_radius: f64, resolution: usize) -> PolyData {
     let res=resolution.max(6);let nl=num_legs.max(3);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Tank (cylinder at height)

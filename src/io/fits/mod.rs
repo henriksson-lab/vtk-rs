@@ -3,7 +3,7 @@
 //! Reads simple 2D/3D FITS image data (primary HDU) into ImageData.
 //! Supports BITPIX -32 (f32), -64 (f64), 16 (i16), 32 (i32).
 
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek};
 use crate::data::{AnyDataArray, DataArray, ImageData};
 
 /// Read a FITS primary image into ImageData.

@@ -37,7 +37,7 @@ impl Default for GearParams {
 /// `thickness`. Each tooth is a trapezoidal bump on the outer radius.
 pub fn gear(params: &GearParams) -> PolyData {
     let nt = params.num_teeth.max(3);
-    let r_inner = params.inner_radius;
+    let _r_inner = params.inner_radius;
     let r_outer = params.outer_radius;
     let r_tip = r_outer + params.tooth_height;
     let half_t = params.thickness / 2.0;
@@ -116,10 +116,10 @@ pub fn gear(params: &GearParams) -> PolyData {
     // Side faces: quads connecting bottom and top profiles.
     for i in 0..n_profile {
         let next = (i + 1) % n_profile;
-        let b0 = i as i64;
-        let b1 = next as i64;
-        let t0 = top_offset + i as i64;
-        let t1 = top_offset + next as i64;
+        let _b0 = i as i64;
+        let _b1 = next as i64;
+        let _t0 = top_offset + i as i64;
+        let _t1 = top_offset + next as i64;
 
         // Compute outward normal for this side edge.
         let dx = profile[next][0] - profile[i][0];

@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn bernal_sphere(radius: f64, window_strip_count: usize, resolution: usize) -> PolyData {
     let res=resolution.max(12);let nw=window_strip_count.max(0);
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Main sphere
     let vres=res;
     for iv in 0..=vres{let v=std::f64::consts::PI*iv as f64/vres as f64;

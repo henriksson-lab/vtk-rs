@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, DataSetAttributes, PolyData};
+use crate::data::{DataSetAttributes, PolyData};
 
 /// Rename a point or cell data array.
 ///

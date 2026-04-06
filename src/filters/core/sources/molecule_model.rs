@@ -1,7 +1,7 @@
 //! Simple ball-and-stick molecular model.
 use crate::data::{CellArray, Points, PolyData};
 pub fn molecule(atoms: &[[f64;3]], radii: &[f64], bonds: &[(usize,usize)], resolution: usize) -> PolyData {
-    let res=resolution.max(6);
+    let _res=resolution.max(6);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Atoms (octahedra as sphere approximation)
     for (ai,&pos) in atoms.iter().enumerate(){let r=if ai<radii.len(){radii[ai]}else{0.3};

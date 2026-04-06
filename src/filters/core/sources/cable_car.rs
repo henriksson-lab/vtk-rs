@@ -23,7 +23,7 @@ pub fn cable_car_system(stations: &[[f64;3]], cable_sag: f64, num_gondolas: usiz
             let ci=pts.len();pts.push([x,y,z]);cable_ids.push(ci as i64);}
         lines.push_cell(&cable_ids);}
     // Gondolas (boxes hanging from cable)
-    let total_cable_l:f64=(0..ns-1).map(|i|{let d=[(stations[i+1][0]-stations[i][0]),
+    let _total_cable_l:f64=(0..ns-1).map(|i|{let d=[(stations[i+1][0]-stations[i][0]),
         (stations[i+1][1]-stations[i][1]),(stations[i+1][2]-stations[i][2])];
         (d[0]*d[0]+d[1]*d[1]+d[2]*d[2]).sqrt()}).sum();
     let gs=gondola_size/2.0;

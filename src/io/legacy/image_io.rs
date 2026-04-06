@@ -1,7 +1,7 @@
 use std::io::{BufRead, Write};
 use std::path::Path;
 
-use crate::data::{AnyDataArray, DataArray, DataSet, ImageData};
+use crate::data::{AnyDataArray, DataArray, ImageData};
 use crate::types::{ScalarType, VtkError};
 
 /// Write an ImageData to VTK legacy format (STRUCTURED_POINTS).

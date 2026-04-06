@@ -7,11 +7,26 @@ description = "Pure Rust visualization toolkit — data structures, filters, I/O
 license = "BSD-3-Clause"
 repository = "https://github.com/henriksson/vtk-rs"
 homepage = "https://github.com/henriksson/vtk-rs"
-documentation = "https://docs.rs/vtk"
+documentation = "https://docs.rs/vtk-pure-rs"
+exclude = [
+    "VTK/",                  # C++ 9.6 reference source (~390MB)
+    "target/",
+    ".claude/",
+    ".cargo/",
+    "scripts/",
+    "convo.txt",
+    "convo.txt.save",
+    "NOTES.md",
+    "TODO.md",
+    "ALLFEAT.md",
+    "NONEXTRA.md",
+    "tests/vtk_validation/generate_*.py",  # Python scripts for generating C++ reference data
+    "benches/",
+]
 readme = "README.md"
 keywords = ["vtk", "visualization", "mesh", "scientific", "3d"]
 categories = ["science", "graphics", "rendering::data-formats"]
-exclude = ["VTK/", "benches/", "scripts/"]
+# exclude is defined above
 autobenches = false
 
 [features]

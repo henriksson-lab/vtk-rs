@@ -1,7 +1,7 @@
 //! Pendulum geometry (bob + string + pivot).
 use crate::data::{CellArray, Points, PolyData};
 pub fn pendulum(string_length: f64, bob_radius: f64, angle_degrees: f64, resolution: usize) -> PolyData {
-    let res=resolution.max(6);let angle=angle_degrees.to_radians();
+    let _res=resolution.max(6);let angle=angle_degrees.to_radians();
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Pivot
     pts.push([0.0,0.0,0.0]);

@@ -3,7 +3,7 @@
 //! Statistical analysis, feature detection, and region analysis
 //! specifically designed for 3D volumetric data.
 
-use crate::data::{AnyDataArray, DataArray, ImageData};
+use crate::data::ImageData;
 
 /// Compute volume-weighted histogram of a scalar field.
 pub fn volume_histogram(image: &ImageData, array_name: &str, n_bins: usize) -> Vec<(f64, usize)> {

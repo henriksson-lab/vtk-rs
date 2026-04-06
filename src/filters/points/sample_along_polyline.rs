@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData, KdTree};
+use crate::data::{AnyDataArray, DataArray, PolyData, KdTree};
 
 /// Sample a scalar field along an existing polyline.
 ///

@@ -22,7 +22,7 @@ pub fn pipe_bend(bend_radius: f64, pipe_radius: f64, angle_degrees: f64, bend_re
         let tx = a.cos();
         let tz = a.sin();
         // Radial direction (pointing away from bend center)
-        let rx = a.sin();
+        let _rx = a.sin();
         let rz = -(1.0 - a.cos()).signum() * a.cos();
         let _ = rz; // We use a simpler frame
 

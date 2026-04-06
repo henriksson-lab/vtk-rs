@@ -25,7 +25,7 @@ pub fn lens(radius: f64, curvature: f64, resolution: usize) -> PolyData {
             let phi = 2.0 * std::f64::consts::PI * i as f64 / n_phi as f64;
             let x = sphere_r * theta.sin() * phi.cos();
             let y = sphere_r * theta.sin() * phi.sin();
-            let z = d - sphere_r * theta.cos() + sphere_r - d; // shifted forward
+            let _z = d - sphere_r * theta.cos() + sphere_r - d; // shifted forward
             let z = sphere_r * (1.0 - theta.cos()) - (sphere_r - d);
             points.push([x, y, z]);
         }

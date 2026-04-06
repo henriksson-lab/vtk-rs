@@ -1,6 +1,6 @@
 //! Soccer goal geometry (posts + crossbar + net approximation).
 use crate::data::{CellArray, Points, PolyData};
-pub fn soccer_goal(width: f64, height: f64, depth: f64, post_radius: f64) -> PolyData {
+pub fn soccer_goal(width: f64, height: f64, depth: f64, _post_radius: f64) -> PolyData {
     let hw=width/2.0;
     let mut pts=Points::<f64>::new();let mut lines=CellArray::new();let mut polys=CellArray::new();
     // Posts and crossbar

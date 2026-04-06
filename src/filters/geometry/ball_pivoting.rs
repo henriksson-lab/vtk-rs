@@ -18,7 +18,7 @@ pub fn ball_pivoting(points: &PolyData, radius: f64) -> PolyData {
     let r2 = radius * radius;
 
     // Build simple spatial hash for neighbor queries
-    let cell_size = radius * 2.0;
+    let _cell_size = radius * 2.0;
     let mut used = vec![false; n];
     let mut triangles: Vec<[usize; 3]> = Vec::new();
 

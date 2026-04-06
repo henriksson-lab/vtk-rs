@@ -4,6 +4,10 @@ A pure Rust reimplementation of [VTK](https://vtk.org/) (The Visualization Toolk
 
 **~300K lines of Rust | 5184 features | 575+ tests | 22 I/O formats | wgpu rendering**
 
+Most functions tested to give the same output as C++ version. But see TODO.md for some that are not; example files needed to do full testing
+
+A few features have not been included; contact if interested in these
+
 ## Performance vs VTK C++ 9.6
 
 Benchmarked 141 operations against VTK C++ 9.6. **On average 17% faster than C++** (0.83x ratio).
@@ -42,13 +46,11 @@ vtk-pure-rs = "0.2"
 
 ## Build Times
 
-| What you need | Features | Clean build |
-|---------------|----------|-------------|
-| Data structures + core filters | default | **12s** |
-| + Smoothing, transform, subdivide, etc. | `filters-all` (excl. GPU) | **20s** |
-| + Image processing (3000+ filters) | `filters-image` | **40s** |
-| + Mesh processing (800+ filters) | `filters-mesh` | **30s** |
-| Everything | `full` | **60s** |
+| What you need | Features | Clean release build |
+|---------------|----------|---------------------|
+| Core filters + common I/O | default | **16s** |
+| + all non-extra filter groups + all I/O | + `filters-smooth`, `filters-transform`, etc. + `io-all` | **25s** |
+| + extra sources + image + mesh (everything minus GPU) | all non-GPU features | **1m 50s** |
 
 The heavy filter modules (`filters-image` 3000+ modules, `filters-mesh` 800+ modules) are feature-gated so they don't compile unless you need them.
 
@@ -82,7 +84,7 @@ The heavy filter modules (`filters-image` 3000+ modules, `filters-mesh` 800+ mod
 | I/O Formats | 22 | — | 22 |
 | **Total** | **396** | **4788** | **5184** |
 
-See [ALLFEAT.md](ALLFEAT.md) for the full annotated feature list.
+See [FEATURES.md](FEATURES.md) for the full annotated feature list.
 
 ## Module Structure
 

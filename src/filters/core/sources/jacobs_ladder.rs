@@ -10,7 +10,7 @@ pub fn jacobs_ladder(block_width: f64, block_height: f64, n_blocks: usize) -> Po
     let mut lines = CellArray::new();
     for b in 0..nb {
         let z = -spacing * b as f64;
-        let angle = if b % 2 == 0 { 0.0 } else { 0.1 }; // slight alternating tilt
+        let _angle = if b % 2 == 0 { 0.0 } else { 0.1 }; // slight alternating tilt
         let bb = pts.len();
         pts.push([-hw, -0.01, z-hh]); pts.push([hw, -0.01, z-hh]);
         pts.push([hw, -0.01, z+hh]); pts.push([-hw, -0.01, z+hh]);

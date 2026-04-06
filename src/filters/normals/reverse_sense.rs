@@ -1,4 +1,4 @@
-use crate::data::{CellArray, Points, PolyData};
+use crate::data::{CellArray, PolyData};
 
 /// Reverse winding order of all polygon cells and flip normals.
 /// Uses raw connectivity reversal — no clone of point data.

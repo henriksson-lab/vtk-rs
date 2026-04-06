@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn below_knee_prosthesis(socket_r: f64, socket_h: f64, pylon_r: f64, pylon_h: f64, foot_l: f64, foot_w: f64, resolution: usize) -> PolyData {
     let res=resolution.max(8);
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Socket (truncated cone)
     for ring in 0..=1{let t=ring as f64;
         let r=socket_r*(1.0-t*0.2);let z=socket_h+pylon_h+if ring==0{0.0}else{socket_h};

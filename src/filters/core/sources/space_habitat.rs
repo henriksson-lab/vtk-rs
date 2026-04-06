@@ -13,12 +13,12 @@ pub fn oneill_cylinder(radius: f64, length: f64, window_strips: usize, resolutio
         if !is_window{polys.push_cell(&[i as i64,j as i64,(res+j) as i64,(res+i) as i64]);}}
     // Endcaps (hemispherical)
     for &side in &[-1.0f64,1.0]{let x=side*hl;let cap_d=radius*0.3;
-        let dome_res=res/2;
+        let _dome_res=res/2;
         let dc=pts.len();pts.push([x+side*cap_d,0.0,0.0]);
         let db=pts.len();
         for i in 0..res{let a=2.0*std::f64::consts::PI*i as f64/res as f64;
             pts.push([x,radius*0.95*a.cos(),radius*0.95*a.sin()]);}
-        let ring_base=if side<0.0{0}else{res};
+        let _ring_base=if side<0.0{0}else{res};
         for i in 0..res{let j=(i+1)%res;
             polys.push_cell(&[dc as i64,(db+j) as i64,(db+i) as i64]);}}
     // Interior terrain strips (land areas along inside)

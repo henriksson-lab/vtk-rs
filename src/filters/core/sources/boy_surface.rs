@@ -86,10 +86,10 @@ fn apery(u: f64, v: f64) -> (f64, f64, f64) {
     let cu = u.cos();
     let su = u.sin();
     let cv = v.cos();
-    let sv = v.sin();
+    let _sv = v.sin();
     let s2v = (2.0 * v).sin();
-    let c2v = (2.0 * v).cos();
-    let s2u = (2.0 * u).sin();
+    let _c2v = (2.0 * v).cos();
+    let _s2u = (2.0 * u).sin();
 
     let sqrt2 = std::f64::consts::SQRT_2;
 

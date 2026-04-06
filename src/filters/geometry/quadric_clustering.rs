@@ -1,5 +1,4 @@
 use crate::data::{CellArray, Points, PolyData, DataSet};
-use std::collections::HashMap;
 
 /// Simplify a mesh by quadric error metric vertex clustering.
 ///

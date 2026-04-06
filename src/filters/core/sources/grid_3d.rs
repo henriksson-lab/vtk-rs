@@ -1,6 +1,6 @@
 //! 3D structured grid source with cell/point data.
 
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{CellArray, Points, PolyData};
 
 /// Generate a 3D grid of hexahedral cells as surface quads.
 ///

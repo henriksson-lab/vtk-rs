@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 
 pub fn chess_pawn(height: f64, n_angular: usize, n_profile: usize) -> PolyData {
-    let na = n_angular.max(8); let np = n_profile.max(10);
+    let na = n_angular.max(8); let _np = n_profile.max(10);
     // Profile points: (radius, height_fraction)
     let profile = vec![
         (0.4, 0.0), (0.45, 0.02), (0.42, 0.05), (0.2, 0.1),
@@ -12,7 +12,7 @@ pub fn chess_pawn(height: f64, n_angular: usize, n_profile: usize) -> PolyData {
     ];
     let mut pts = Points::<f64>::new();
     let mut polys = CellArray::new();
-    for (pi, &(r, h)) in profile.iter().enumerate() {
+    for (_pi, &(r, h)) in profile.iter().enumerate() {
         let z = h * height;
         let radius = r * height;
         if radius < 1e-10 {

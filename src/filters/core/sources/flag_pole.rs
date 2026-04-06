@@ -19,7 +19,7 @@ pub fn flag_pole(pole_h: f64, flag_w: f64, flag_h: f64, wave_amplitude: f64, res
         polys.push_cell(&[(fb+iy*fw+ix) as i64,(fb+iy*fw+ix+1) as i64,
             (fb+(iy+1)*fw+ix+1) as i64,(fb+(iy+1)*fw+ix) as i64]);}}
     // Ball on top
-    let bb=pts.len();pts.push([0.0,0.0,pole_h+pole_h*0.02]);
+    let _bb=pts.len();pts.push([0.0,0.0,pole_h+pole_h*0.02]);
     let mut r=PolyData::new();r.points=pts;r.polys=polys;r.lines=lines;r
 }
 #[cfg(test)] mod tests { use super::*;

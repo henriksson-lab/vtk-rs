@@ -3,7 +3,7 @@
 //! Supports dynamic point insertion and nearest-neighbor queries,
 //! useful for incremental mesh construction.
 
-use crate::data::{Points, PolyData};
+use crate::data::PolyData;
 
 /// An incrementally built octree for point location.
 pub struct IncrementalOctree {
@@ -98,8 +98,8 @@ impl IncrementalOctree {
         self.insert_recursive(child, idx, pt, cmin, cmax, depth + 1);
     }
 
-    fn split(&mut self, node: usize, min: [f64; 3], max: [f64; 3], depth: usize) {
-        let mid = midpoint(min, max);
+    fn split(&mut self, node: usize, min: [f64; 3], max: [f64; 3], _depth: usize) {
+        let _mid = midpoint(min, max);
         let first_child = self.nodes.len();
         for _ in 0..8 {
             self.nodes.push(OctreeNode {

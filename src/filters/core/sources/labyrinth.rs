@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn circular_labyrinth(rings: usize, radius: f64, wall_height: f64, seed: u64) -> PolyData {
     let nr=rings.max(2);let segments=8;let mut pts=Points::<f64>::new();let mut polys=CellArray::new();
-    let wt=radius*0.02;let mut rng=seed;
+    let _wt=radius*0.02;let mut rng=seed;
     for r in 1..=nr{let ring_r=radius*r as f64/nr as f64;
         for s in 0..segments{
             rng=rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);

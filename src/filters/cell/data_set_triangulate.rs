@@ -1,4 +1,4 @@
-use crate::data::{Points, UnstructuredGrid};
+use crate::data::UnstructuredGrid;
 use crate::data::DataSet;
 use crate::types::CellType;
 

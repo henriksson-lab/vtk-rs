@@ -3,7 +3,7 @@ use crate::data::{CellArray, Points, PolyData};
 pub fn spine(num_vertebrae: usize, vertebra_r: f64, vertebra_h: f64, disc_h: f64, resolution: usize) -> PolyData {
     let res=resolution.max(6);let nv=num_vertebrae.max(3);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();
-    let total_h=(vertebra_h+disc_h)*nv as f64;
+    let _total_h=(vertebra_h+disc_h)*nv as f64;
     for vi in 0..nv{let z=vi as f64*(vertebra_h+disc_h);
         // Vertebral body (cylinder with slight bulge)
         for ring in 0..=2{let t=ring as f64/2.0;let rz=z+t*vertebra_h;

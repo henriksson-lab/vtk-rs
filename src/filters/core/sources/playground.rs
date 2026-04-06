@@ -35,7 +35,7 @@ pub fn slide(height: f64, length: f64, width: f64, resolution: usize) -> PolyDat
     for i in 0..res{let b=i*2;
         polys.push_cell(&[b as i64,(b+1) as i64,(b+3) as i64,(b+2) as i64]);}
     // Ladder
-    let lb=pts.len();
+    let _lb=pts.len();
     pts.push([0.0,-hw*0.3,0.0]);pts.push([0.0,-hw*0.3,height]);
     pts.push([0.0,hw*0.3,0.0]);pts.push([0.0,hw*0.3,height]);
     let mut r=PolyData::new();r.points=pts;r.polys=polys;r

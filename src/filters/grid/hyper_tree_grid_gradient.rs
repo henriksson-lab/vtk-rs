@@ -24,7 +24,7 @@ pub fn hyper_tree_grid_gradient(htg: &HyperTreeGrid, array_name: &str) -> HyperT
     let ci = |i: usize, j: usize, k: usize| i + j * gs[0] + k * gs[0] * gs[1];
 
     let mut buf = [0.0f64];
-    let val = |i: usize, j: usize, k: usize| -> f64 {
+    let _val = |i: usize, j: usize, k: usize| -> f64 {
         let idx = ci(i, j, k);
         if idx < arr.num_tuples() { arr.tuple_as_f64(idx, &mut [0.0f64]); }
         let mut b = [0.0f64];

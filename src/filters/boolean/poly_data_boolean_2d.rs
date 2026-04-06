@@ -1,4 +1,4 @@
-use crate::data::{CellArray, Points, PolyData};
+use crate::data::PolyData;
 
 /// Compute the 2D bounding box intersection of two PolyData.
 ///

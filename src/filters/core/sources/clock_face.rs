@@ -1,7 +1,7 @@
 //! Clock face with hour markers and hands.
 use crate::data::{CellArray, Points, PolyData};
 pub fn clock_face(radius: f64, hour: usize, minute: usize) -> PolyData {
-    let mut pts=Points::<f64>::new();let mut lines=CellArray::new();let mut polys=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut lines=CellArray::new();let _polys=CellArray::new();
     // Dial circle
     let res=60;
     for i in 0..res{let a=2.0*std::f64::consts::PI*i as f64/res as f64;

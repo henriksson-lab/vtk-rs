@@ -2,7 +2,7 @@
 //!
 //! Provides kernel evaluators and Voronoi-based natural neighbor interpolation.
 
-use crate::data::{AnyDataArray, DataArray, Points, PolyData};
+use crate::data::{AnyDataArray, DataArray, PolyData};
 
 /// Gaussian kernel: w(r) = exp(-r²/(2σ²))
 pub fn gaussian_kernel_weight(r: f64, sigma: f64) -> f64 {

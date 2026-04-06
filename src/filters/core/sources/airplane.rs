@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn airplane(fuselage_l: f64, fuselage_r: f64, wing_span: f64, wing_chord: f64, tail_h: f64, resolution: usize) -> PolyData {
     let res=resolution.max(8);let hl=fuselage_l/2.0;let hws=wing_span/2.0;
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Fuselage
     let nseg=8;
     for is in 0..=nseg{let t=is as f64/nseg as f64;let x=-hl+fuselage_l*t;

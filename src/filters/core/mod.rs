@@ -1,3 +1,4 @@
+#![allow(unexpected_cfgs)]
 pub mod sources;
 #[cfg(feature = "image")]
 #[cfg(feature = "mesh")]

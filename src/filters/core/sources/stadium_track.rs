@@ -5,7 +5,7 @@ pub fn running_track(straight_length: f64, radius: f64, lanes: usize, lane_width
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();
     for lane in 0..=nl{
         let r=radius+lane as f64*lane_width;let hl=straight_length/2.0;
-        let n=res*2+2;
+        let _n=res*2+2;
         // Right semicircle
         for i in 0..=res{let a=-std::f64::consts::FRAC_PI_2+std::f64::consts::PI*i as f64/res as f64;
             pts.push([hl+r*a.cos(),r*a.sin(),0.0]);}

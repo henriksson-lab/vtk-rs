@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData, KdTree};
+use crate::data::{CellArray, Points, PolyData, KdTree};
 
 /// Merge points from multiple PolyData inputs, removing duplicates within tolerance.
 ///

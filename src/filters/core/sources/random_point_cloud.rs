@@ -1,6 +1,6 @@
 //! Random point cloud generators.
 
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{CellArray, Points, PolyData};
 
 /// Generate random points in a box.
 pub fn random_points_box(n: usize, bounds: [[f64; 2]; 3], seed: u64) -> PolyData {

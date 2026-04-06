@@ -3,7 +3,7 @@
 //! For each point with a vector data array, creates a line segment
 //! from the point in the direction of the vector, scaled by a factor.
 
-use crate::data::{AnyDataArray, CellArray, Points, PolyData};
+use crate::data::{CellArray, Points, PolyData};
 
 /// Generate hedgehog (oriented line) glyphs from a vector field.
 ///

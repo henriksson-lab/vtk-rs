@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData, DataSet};
+use crate::data::{CellArray, Points, PolyData};
 
 /// Replace each cell with a single point at its centroid.
 ///

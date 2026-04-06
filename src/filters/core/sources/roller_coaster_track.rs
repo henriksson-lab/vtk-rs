@@ -1,6 +1,6 @@
 //! Roller coaster track (helical with loops).
 use crate::data::{CellArray, Points, PolyData};
-pub fn roller_coaster(length: f64, max_height: f64, num_hills: usize, loop_radius: f64, resolution: usize) -> PolyData {
+pub fn roller_coaster(length: f64, max_height: f64, num_hills: usize, _loop_radius: f64, resolution: usize) -> PolyData {
     let res=resolution.max(20);let gauge=0.5;
     let mut pts=Points::<f64>::new();let mut lines=CellArray::new();
     let mut left_ids=Vec::new();let mut right_ids=Vec::new();

@@ -1,3 +1,4 @@
+#![allow(ambiguous_glob_reexports)]
 //! Geometry sources.
 
 //! Geometry sources.
@@ -134,8 +135,6 @@ pub mod boy_surface; pub use boy_surface::*;
 #[cfg(feature = "sources-extra")]
 pub mod boy_surface_immersion;
 #[cfg(feature = "sources-extra")]
-pub use boy_surface_immersion::*;
-#[cfg(feature = "sources-extra")]
 pub mod bracket;
 #[cfg(feature = "sources-extra")]
 pub use bracket::*;
@@ -190,8 +189,6 @@ pub mod catamaran;
 pub use catamaran::*;
 #[cfg(feature = "sources-extra")]
 pub mod catapult;
-#[cfg(feature = "sources-extra")]
-pub use catapult::*;
 #[cfg(feature = "sources-extra")]
 pub mod catapult_simple;
 #[cfg(feature = "sources-extra")]
@@ -608,8 +605,6 @@ pub use jacobs_ladder::*;
 #[cfg(feature = "sources-extra")]
 pub mod japanese_gate;
 #[cfg(feature = "sources-extra")]
-pub use japanese_gate::*;
-#[cfg(feature = "sources-extra")]
 pub mod joint_implant;
 #[cfg(feature = "sources-extra")]
 pub use joint_implant::*;
@@ -839,8 +834,6 @@ pub use pcb_board::*;
 #[cfg(feature = "sources-extra")]
 pub mod pendulum;
 #[cfg(feature = "sources-extra")]
-pub use pendulum::*;
-#[cfg(feature = "sources-extra")]
 pub mod pendulum_clock;
 #[cfg(feature = "sources-extra")]
 pub use pendulum_clock::*;
@@ -969,11 +962,7 @@ pub use radio_dish::*;
 #[cfg(feature = "sources-extra")]
 pub mod radio_telescope;
 #[cfg(feature = "sources-extra")]
-pub use radio_telescope::*;
-#[cfg(feature = "sources-extra")]
 pub mod radio_telescope_array;
-#[cfg(feature = "sources-extra")]
-pub use radio_telescope_array::*;
 #[cfg(feature = "sources-extra")]
 pub mod railroad_track;
 #[cfg(feature = "sources-extra")]
@@ -1007,15 +996,11 @@ pub use rocket::*;
 #[cfg(feature = "sources-extra")]
 pub mod roller_coaster;
 #[cfg(feature = "sources-extra")]
-pub use roller_coaster::*;
-#[cfg(feature = "sources-extra")]
 pub mod roller_coaster_loop;
 #[cfg(feature = "sources-extra")]
 pub use roller_coaster_loop::*;
 #[cfg(feature = "sources-extra")]
 pub mod roller_coaster_track;
-#[cfg(feature = "sources-extra")]
-pub use roller_coaster_track::*;
 #[cfg(feature = "sources-extra")]
 pub mod roller_conveyor;
 #[cfg(feature = "sources-extra")]
@@ -1149,11 +1134,7 @@ pub use soccer_goal::*;
 #[cfg(feature = "sources-extra")]
 pub mod solar_panel;
 #[cfg(feature = "sources-extra")]
-pub use solar_panel::*;
-#[cfg(feature = "sources-extra")]
 pub mod solar_panel_array;
-#[cfg(feature = "sources-extra")]
-pub use solar_panel_array::*;
 #[cfg(feature = "sources-extra")]
 pub mod solar_system;
 #[cfg(feature = "sources-extra")]
@@ -1294,8 +1275,6 @@ pub mod terrain; pub use terrain::*;
 #[cfg(feature = "sources-extra")]
 pub mod terrain_heightmap;
 #[cfg(feature = "sources-extra")]
-pub use terrain_heightmap::*;
-#[cfg(feature = "sources-extra")]
 pub mod tesla_coil;
 #[cfg(feature = "sources-extra")]
 pub use tesla_coil::*;
@@ -1318,8 +1297,6 @@ pub mod tokamak;
 pub use tokamak::*;
 #[cfg(feature = "sources-extra")]
 pub mod torii_gate;
-#[cfg(feature = "sources-extra")]
-pub use torii_gate::*;
 pub mod torus; pub use torus::*;
 pub mod torus_knot; pub use torus_knot::*;
 #[cfg(feature = "sources-extra")]
@@ -1340,8 +1317,6 @@ pub mod traffic_light;
 pub use traffic_light::*;
 #[cfg(feature = "sources-extra")]
 pub mod trebuchet;
-#[cfg(feature = "sources-extra")]
-pub use trebuchet::*;
 pub mod trefoil_knot; pub use trefoil_knot::*;
 #[cfg(feature = "sources-extra")]
 pub mod trident;
@@ -1405,8 +1380,6 @@ pub mod warp_drive;
 pub use warp_drive::*;
 #[cfg(feature = "sources-extra")]
 pub mod water_molecule;
-#[cfg(feature = "sources-extra")]
-pub use water_molecule::*;
 #[cfg(feature = "sources-extra")]
 pub mod water_tank_elevated;
 #[cfg(feature = "sources-extra")]

@@ -25,7 +25,7 @@ pub fn dumbbell(bar_length: f64, weight_radius: f64, bar_radius: f64, na: usize)
     // Two weight spheres
     for &cx in &[-bar_length/2.0, bar_length/2.0] {
         let np = 4;
-        let top = pts.len(); pts.push([cx, 0.0, weight_radius]);
+        let _top = pts.len(); pts.push([cx, 0.0, weight_radius]);
         for p in 1..np {
             let phi = std::f64::consts::PI * p as f64 / np as f64;
             let r = weight_radius * phi.sin();
@@ -34,13 +34,13 @@ pub fn dumbbell(bar_length: f64, weight_radius: f64, bar_radius: f64, na: usize)
                 let a = 2.0 * std::f64::consts::PI * j as f64 / na as f64;
                 pts.push([cx, r * a.cos(), z + r * a.sin() - r * a.sin() + z]);
                 // Simplified: just place on sphere surface
-                let last = pts.len() - 1;
-                let p_ref = &mut [0.0f64; 3];
+                let _last = pts.len() - 1;
+                let _p_ref = &mut [0.0f64; 3];
                 // Actually let's just do it simply
             }
         }
         // Simpler: just hemisphere caps
-        let sb = pts.len() - 1; // reset
+        let _sb = pts.len() - 1; // reset
         let sphere_base = pts.len();
         pts.push([cx, 0.0, weight_radius]); // top
         for p in 1..=np {

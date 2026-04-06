@@ -19,7 +19,7 @@ enum BspNode {
 /// BSP tree for fast cell location.
 pub struct BspTree {
     root: BspNode,
-    max_cells_per_leaf: usize,
+    _max_cells_per_leaf: usize,
 }
 
 impl BspTree {
@@ -41,7 +41,7 @@ impl BspTree {
 
         let root = Self::build_recursive(&indices, &centroids, max_cells_per_leaf, 0);
 
-        Self { root, max_cells_per_leaf }
+        Self { root, _max_cells_per_leaf: max_cells_per_leaf }
     }
 
     /// Find cells near a query point.

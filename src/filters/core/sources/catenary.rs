@@ -1,6 +1,6 @@
 //! Catenary curve and surface geometry source.
 
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData};
+use crate::data::{CellArray, Points, PolyData};
 
 /// Generate a catenary curve: y = a * cosh(x/a).
 pub fn catenary_curve(a: f64, x_range: (f64,f64), resolution: usize) -> PolyData {

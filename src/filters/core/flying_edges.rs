@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use crate::data::{CellArray, DataArray, ImageData, Points, PolyData};
+use crate::data::{CellArray, ImageData, Points, PolyData};
 use crate::filters::core::marching_cubes::{EDGE_TABLE, TRI_TABLE};
 
 /// Flying Edges 3D — 4-pass algorithm with adaptive parallelism.

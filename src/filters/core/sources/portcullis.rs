@@ -1,6 +1,6 @@
 //! Portcullis (castle gate) geometry.
 use crate::data::{CellArray, Points, PolyData};
-pub fn portcullis(width: f64, height: f64, bar_spacing: f64, bar_radius: f64) -> PolyData {
+pub fn portcullis(width: f64, height: f64, bar_spacing: f64, _bar_radius: f64) -> PolyData {
     let hw=width/2.0;let nb=((width/bar_spacing).ceil() as usize).max(2);
     let mut pts=Points::<f64>::new();let mut lines=CellArray::new();
     // Vertical bars

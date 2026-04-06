@@ -1,7 +1,7 @@
 //! Cardiac pacemaker (generator + lead wires).
 use crate::data::{CellArray, Points, PolyData};
 pub fn pacemaker(body_w: f64, body_h: f64, body_t: f64, lead_length: f64, num_leads: usize, resolution: usize) -> PolyData {
-    let res=resolution.max(6);let nl=num_leads.max(1);
+    let _res=resolution.max(6);let nl=num_leads.max(1);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Generator body (rounded box)
     let hw=body_w/2.0;let hh=body_h/2.0;let ht=body_t/2.0;

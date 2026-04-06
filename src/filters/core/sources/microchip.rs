@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn microchip(body_w: f64, body_l: f64, body_h: f64, num_pins: usize, pin_spacing: f64, pin_length: f64) -> PolyData {
     let np=num_pins.max(4);let hw=body_w/2.0;let hl=body_l/2.0;
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     let ab=|pts:&mut Points<f64>,polys:&mut CellArray,x0:f64,y0:f64,z0:f64,x1:f64,y1:f64,z1:f64|{
         let b=pts.len();
         pts.push([x0,y0,z0]);pts.push([x1,y0,z0]);pts.push([x1,y1,z0]);pts.push([x0,y1,z0]);

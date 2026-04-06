@@ -13,7 +13,7 @@ pub fn d3_decompose_points(mesh: &PolyData, depth: usize) -> Vec<PolyData> {
     let n = mesh.points.len();
     if n == 0 { return Vec::new(); }
 
-    let mut indices: Vec<usize> = (0..n).collect();
+    let indices: Vec<usize> = (0..n).collect();
     let positions: Vec<[f64; 3]> = (0..n).map(|i| mesh.points.get(i)).collect();
 
     let mut partitions: Vec<Vec<usize>> = vec![indices];
@@ -73,7 +73,7 @@ pub fn d3_decompose_cells(mesh: &PolyData, depth: usize) -> Vec<PolyData> {
         [c[0]/n, c[1]/n, c[2]/n]
     }).collect();
 
-    let mut cell_indices: Vec<usize> = (0..n_cells).collect();
+    let cell_indices: Vec<usize> = (0..n_cells).collect();
     let mut partitions = vec![cell_indices];
 
     for level in 0..depth {

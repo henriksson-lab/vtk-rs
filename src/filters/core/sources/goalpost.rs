@@ -1,6 +1,6 @@
 //! Various goalpost/frame shapes.
 use crate::data::{CellArray, Points, PolyData};
-pub fn h_frame(width: f64, height: f64, crossbar_height: f64, bar_radius: f64) -> PolyData {
+pub fn h_frame(width: f64, height: f64, crossbar_height: f64, _bar_radius: f64) -> PolyData {
     let mut pts=Points::<f64>::new();let mut lines=CellArray::new();
     let hw=width/2.0;
     // Left upright

@@ -62,8 +62,8 @@ pub fn read_byu<R: BufRead>(reader: R) -> Result<PolyData, String> {
 
     let _n_parts = all_nums[0] as usize;
     let n_verts = all_nums[1] as usize;
-    let n_polys = all_nums[2] as usize;
-    let n_conn = all_nums[3] as usize;
+    let _n_polys = all_nums[2] as usize;
+    let _n_conn = all_nums[3] as usize;
 
     // Skip part ranges (2 values per part)
     let mut idx = 4 + _n_parts * 2;

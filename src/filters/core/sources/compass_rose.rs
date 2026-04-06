@@ -12,8 +12,8 @@ pub fn compass_rose(radius: f64, num_points: usize) -> PolyData {
         polys.push_cell(&[0,((i+1)) as i64,j as i64]);}
     // Cardinal direction markers (taller points at N,E,S,W)
     for ci in 0..4{let a=std::f64::consts::FRAC_PI_2*ci as f64;
-        let idx=pts.len();pts.push([radius*1.15*a.cos(),radius*1.15*a.sin(),0.01]);
-        let prev_idx=ci*np/2*2+1; // approximate
+        let _idx=pts.len();pts.push([radius*1.15*a.cos(),radius*1.15*a.sin(),0.01]);
+        let _prev_idx=ci*np/2*2+1; // approximate
         // Just mark with a point
     }
     let mut r=PolyData::new();r.points=pts;r.polys=polys;r

@@ -4,7 +4,7 @@
 //! arbitrary points in a vector field, used by stream tracers and
 //! particle tracers.
 
-use crate::data::{AnyDataArray, DataArray, ImageData, Block, MultiBlockDataSet};
+use crate::data::{AnyDataArray, ImageData};
 
 /// Trait for evaluating a velocity field at a point.
 pub trait VelocityField {

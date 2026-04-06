@@ -1,4 +1,4 @@
-use crate::data::{CellArray, Points, PolyData};
+use crate::data::{Points, PolyData};
 
 /// Offset a surface mesh along vertex normals by a given distance.
 ///

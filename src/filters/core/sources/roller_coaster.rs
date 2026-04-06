@@ -13,24 +13,24 @@ pub fn roller_coaster(loop_radius: f64, track_width: f64, n_pts: usize) -> PolyD
     for i in 0..=n {
         let t = i as f64 / n as f64;
         let s = t * total_len;
-        let (x, z, nx, nz);
+        let (x, z, _nx, _nz);
         if s < 2.0 * loop_radius {
             // Approach ramp
             x = -2.0 * loop_radius + s;
             z = s * 0.5; // gentle slope up
-            nx = 0.0; nz = 1.0;
+            _nx = 0.0; _nz = 1.0;
         } else if s < 2.0 * loop_radius + 2.0 * std::f64::consts::PI * loop_radius {
             // Vertical loop
             let angle = (s - 2.0 * loop_radius) / loop_radius;
             x = loop_radius * angle.sin();
             z = loop_radius + loop_radius * (1.0 - angle.cos());
-            nx = -angle.sin(); nz = angle.cos();
+            _nx = -angle.sin(); _nz = angle.cos();
         } else {
             // Exit
             let ds = s - 2.0 * loop_radius - 2.0 * std::f64::consts::PI * loop_radius;
             x = ds;
             z = 2.0 * loop_radius - ds * 0.5; // slope down
-            nx = 0.0; nz = 1.0;
+            _nx = 0.0; _nz = 1.0;
         }
         let l = pts.len(); pts.push([x, -hw, z]); left_rail.push(l);
         let r = pts.len(); pts.push([x, hw, z]); right_rail.push(r);

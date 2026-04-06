@@ -1,7 +1,7 @@
 //! Coral reef structure (branching fractal-like).
 use crate::data::{CellArray, Points, PolyData};
 pub fn coral_branch(height: f64, base_r: f64, branches: usize, depth: usize, seed: u64) -> PolyData {
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let polys=CellArray::new();let mut lines=CellArray::new();
     let mut rng=seed;
     grow_coral(&mut pts,&mut lines,[0.0,0.0,0.0],[0.0,0.0,1.0],height,base_r,branches,depth,&mut rng);
     let mut r=PolyData::new();r.points=pts;r.polys=polys;r.lines=lines;r

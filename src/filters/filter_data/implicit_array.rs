@@ -5,7 +5,7 @@
 //! - Affine arrays (start + step * index)
 //! - Ramer-Douglas-Peucker simplified polylines
 
-use crate::data::{AnyDataArray, DataArray};
+use crate::data::DataArray;
 
 /// Result of attempting to compress a data array.
 #[derive(Debug, Clone)]

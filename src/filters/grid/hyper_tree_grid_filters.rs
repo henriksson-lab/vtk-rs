@@ -122,7 +122,7 @@ pub fn hyper_tree_grid_cell_centers(htg: &HyperTreeGrid) -> PolyData {
     mesh.points = points;
 
     // Add depth info
-    let mut depth_data = vec![0.0f64; gs[0] * gs[1] * gs[2]];
+    let depth_data = vec![0.0f64; gs[0] * gs[1] * gs[2]];
     // depth_data stays 0 for coarse cells (depth info would need tree traversal)
     mesh.point_data_mut().add_array(AnyDataArray::F64(
         DataArray::from_vec("CoarseDepth", depth_data, 1),

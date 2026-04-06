@@ -3,7 +3,7 @@
 //! Each point is transformed by a weighted combination of multiple 4x4
 //! transformation matrices, enabling skeletal deformation.
 
-use crate::data::{AnyDataArray, DataArray, Points, PolyData};
+use crate::data::{Points, PolyData};
 
 /// A transform with a weight for blending.
 #[derive(Debug, Clone)]

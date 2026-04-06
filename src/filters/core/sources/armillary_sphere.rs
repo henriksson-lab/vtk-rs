@@ -14,7 +14,7 @@ pub fn armillary_sphere(radius: f64, na: usize) -> PolyData {
         ([0.0, 1.0, 0.0], 0.0, radius * 0.9),     // meridian 2
         ([0.0, 0.0, 1.0], 23.5 * std::f64::consts::PI / 180.0, radius * 0.85), // tropic of cancer (offset circle)
     ];
-    for (axis, offset_angle, r) in &rings {
+    for (axis, _offset_angle, r) in &rings {
         let rb = pts.len();
         // Create ring perpendicular to axis
         // Find two orthogonal vectors to axis

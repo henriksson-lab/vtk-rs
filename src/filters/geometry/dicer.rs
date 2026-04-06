@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, CellArray, DataArray, Points, PolyData, DataSet};
+use crate::data::{AnyDataArray, DataArray, PolyData, DataSet};
 
 /// Dice a PolyData into spatial regions.
 ///

@@ -1,6 +1,6 @@
 //! Point cloud analysis: bounding sphere, covariance, planarity.
 
-use crate::data::{AnyDataArray, DataArray, Points, PolyData};
+use crate::data::{AnyDataArray, DataArray, PolyData};
 
 /// Compute the bounding sphere of a point cloud.
 ///

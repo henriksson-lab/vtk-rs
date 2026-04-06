@@ -1,4 +1,4 @@
-use crate::data::{CellArray, Points, UnstructuredGrid};
+use crate::data::{Points, UnstructuredGrid};
 use crate::types::CellType;
 
 /// Extract cells of a specific type from an UnstructuredGrid.

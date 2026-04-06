@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn particle_detector(barrel_r: f64, barrel_l: f64, endcap_r: f64, num_layers: usize, resolution: usize) -> PolyData {
     let res=resolution.max(8);let nl=num_layers.max(2);let hl=barrel_l/2.0;
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Barrel layers (concentric cylinders)
     for li in 0..nl{let r=barrel_r*(li+1) as f64/nl as f64;
         for ring in 0..=1{let x=if ring==0{-hl}else{hl};

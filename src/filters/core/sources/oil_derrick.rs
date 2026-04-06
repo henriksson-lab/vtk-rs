@@ -1,7 +1,7 @@
 //! Oil derrick (pump jack) geometry.
 use crate::data::{CellArray, Points, PolyData};
 pub fn oil_derrick(base_w: f64, tower_h: f64, beam_l: f64, horsehead_r: f64) -> PolyData {
-    let hw=base_w/2.0;let bt=base_w*0.05;
+    let hw=base_w/2.0;let _bt=base_w*0.05;
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Base
     let bb=pts.len();

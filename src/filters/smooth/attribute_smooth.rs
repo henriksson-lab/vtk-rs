@@ -1,5 +1,4 @@
 use crate::data::{AnyDataArray, DataArray, PolyData};
-use std::collections::HashMap;
 
 /// Smooth point data attributes over the mesh connectivity.
 ///

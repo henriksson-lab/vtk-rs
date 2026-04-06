@@ -1,6 +1,6 @@
 //! Convert HyperTreeGrid to UnstructuredGrid.
 
-use crate::data::{HyperTreeGrid, Points, UnstructuredGrid};
+use crate::data::{HyperTreeGrid, UnstructuredGrid};
 use crate::types::CellType;
 
 /// Convert a HyperTreeGrid's coarse cells to an UnstructuredGrid.

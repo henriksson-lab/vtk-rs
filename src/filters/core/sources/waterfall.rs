@@ -1,7 +1,7 @@
 //! Waterfall (cliff face with cascading water surface).
 use crate::data::{CellArray, Points, PolyData};
 
-pub fn waterfall(width: f64, cliff_height: f64, pool_depth: f64, n_width: usize, n_height: usize) -> PolyData {
+pub fn waterfall(width: f64, cliff_height: f64, _pool_depth: f64, n_width: usize, n_height: usize) -> PolyData {
     let nw = n_width.max(4); let nh = n_height.max(6);
     let hw = width / 2.0;
     let mut pts = Points::<f64>::new();

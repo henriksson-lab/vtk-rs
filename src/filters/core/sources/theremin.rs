@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 
 pub fn theremin(box_width: f64, box_height: f64, box_depth: f64, antenna_height: f64) -> PolyData {
-    let hw = box_width / 2.0; let hh = box_height / 2.0; let hd = box_depth / 2.0;
+    let hw = box_width / 2.0; let _hh = box_height / 2.0; let hd = box_depth / 2.0;
     let mut pts = Points::<f64>::new();
     let mut polys = CellArray::new();
     let mut lines = CellArray::new();

@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn mars_colony(hab_r: f64, num_habs: usize, greenhouse_l: f64, greenhouse_w: f64, resolution: usize) -> PolyData {
     let res=resolution.max(8);let nh=num_habs.max(1);
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let lines=CellArray::new();
     // Habitats (buried cylinders with dome tops)
     for hi in 0..nh{let hx=hi as f64*(hab_r*3.0);
         // Cylinder

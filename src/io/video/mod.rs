@@ -1,3 +1,4 @@
+#![allow(unexpected_cfgs)]
 mod frame;
 mod ppm_writer;
 #[cfg(feature = "ffmpeg")]

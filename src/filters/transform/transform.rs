@@ -82,28 +82,6 @@ pub fn mul(a: &Matrix4, b: &Matrix4) -> Matrix4 {
     result
 }
 
-/// Transform a point by a 4x4 matrix.
-fn transform_point(m: &Matrix4, p: [f64; 3]) -> [f64; 3] {
-    [
-        m[0][0] * p[0] + m[1][0] * p[1] + m[2][0] * p[2] + m[3][0],
-        m[0][1] * p[0] + m[1][1] * p[1] + m[2][1] * p[2] + m[3][1],
-        m[0][2] * p[0] + m[1][2] * p[1] + m[2][2] * p[2] + m[3][2],
-    ]
-}
-
-/// Transform a normal by a 4x4 matrix (ignoring translation, assuming orthogonal).
-fn transform_normal(m: &Matrix4, n: [f64; 3]) -> [f64; 3] {
-    let tx = m[0][0] * n[0] + m[1][0] * n[1] + m[2][0] * n[2];
-    let ty = m[0][1] * n[0] + m[1][1] * n[1] + m[2][1] * n[2];
-    let tz = m[0][2] * n[0] + m[1][2] * n[1] + m[2][2] * n[2];
-    let len = (tx * tx + ty * ty + tz * tz).sqrt();
-    if len > 1e-10 {
-        [tx / len, ty / len, tz / len]
-    } else {
-        [0.0, 0.0, 1.0]
-    }
-}
-
 /// Apply a 4x4 transformation matrix to all points (and normals) of a PolyData.
 pub fn transform(input: &PolyData, matrix: &Matrix4) -> PolyData {
     let mut output = input.clone();

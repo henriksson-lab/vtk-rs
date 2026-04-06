@@ -149,6 +149,7 @@ fn parse_polygon_outer_ring(text: &str) -> Option<Vec<[f64; 2]>> {
 }
 
 /// Read GeoJSON from a file path.
+#[allow(dead_code)]
 pub fn read_geojson_file(path: &std::path::Path) -> Result<PolyData, String> {
     let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
     read_geojson(&mut file)

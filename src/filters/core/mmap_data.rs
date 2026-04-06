@@ -3,7 +3,7 @@
 //! Provides helpers for working with memory-mapped files,
 //! enabling processing of datasets larger than available RAM.
 
-use crate::data::{AnyDataArray, DataArray, ImageData, Points, PolyData};
+use crate::data::{Points, PolyData};
 use std::path::Path;
 
 /// Information about a memory-mapped data file.

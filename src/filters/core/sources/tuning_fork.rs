@@ -20,8 +20,8 @@ pub fn tuning_fork(prong_length: f64, prong_gap: f64, handle_length: f64, na: us
         }
     }
     // U-bend at top (semicircle connecting two prongs)
-    let bend_na = 8;
-    let bend_r = prong_gap / 2.0;
+    let _bend_na = 8;
+    let _bend_r = prong_gap / 2.0;
     for &x_side in &[-1.0f64, 1.0] {
         // Prong (cylinder along +Z)
         let pb = pts.len();

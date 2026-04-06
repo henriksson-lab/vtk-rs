@@ -20,7 +20,7 @@ pub fn amr_slice(htg: &HyperTreeGrid, axis: usize, position: f64) -> PolyData {
     // Find which coarse cell layer the slice passes through
     let cell_idx = ((position - origin[axis]) / spacing[axis]).floor() as usize;
     let max_idx = gs[axis].saturating_sub(1);
-    let cell_idx = cell_idx.min(max_idx);
+    let _cell_idx = cell_idx.min(max_idx);
 
     let mut points = Points::<f64>::new();
     let mut polys = CellArray::new();

@@ -1,7 +1,7 @@
 //! Ship anchor geometry (simplified).
 use crate::data::{CellArray, Points, PolyData};
 pub fn anchor(height: f64, arm_span: f64, shank_width: f64) -> PolyData {
-    let h=height;let hw=arm_span/2.0;let sw=shank_width/2.0;let t=shank_width*0.5;
+    let h=height;let hw=arm_span/2.0;let sw=shank_width/2.0;let _t=shank_width*0.5;
     let mut pts=Points::<f64>::new();let mut lines=CellArray::new();let mut polys=CellArray::new();
     // Shank (vertical bar)
     let b=pts.len();

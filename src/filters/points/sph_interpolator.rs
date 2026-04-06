@@ -3,7 +3,7 @@
 //! Interpolates data from particles using SPH kernels (cubic spline,
 //! Wendland, etc.) with density-weighted averaging.
 
-use crate::data::{AnyDataArray, DataArray, Points, PolyData};
+use crate::data::{AnyDataArray, DataArray, PolyData};
 
 /// SPH kernel type.
 #[derive(Debug, Clone, Copy)]

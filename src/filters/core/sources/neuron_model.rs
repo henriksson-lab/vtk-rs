@@ -1,7 +1,7 @@
 //! Neuron (nerve cell) geometry with soma, dendrites, and axon.
 use crate::data::{CellArray, Points, PolyData};
 pub fn neuron(soma_r: f64, num_dendrites: usize, dendrite_length: f64, axon_length: f64, axon_branches: usize, resolution: usize) -> PolyData {
-    let res=resolution.max(6);let nd=num_dendrites.max(2);
+    let _res=resolution.max(6);let nd=num_dendrites.max(2);
     let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
     // Soma (sphere approximation)
     let sb=pts.len();

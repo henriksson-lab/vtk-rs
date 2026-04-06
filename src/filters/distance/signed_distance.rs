@@ -1,4 +1,4 @@
-use crate::data::{AnyDataArray, DataArray, DataSet, ImageData, PolyData};
+use crate::data::{AnyDataArray, DataArray, ImageData, PolyData};
 
 /// Compute a signed distance field from a PolyData surface on an ImageData grid.
 ///

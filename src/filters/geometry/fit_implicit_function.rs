@@ -96,7 +96,7 @@ pub fn fit_plane(points: &PolyData) -> Option<([f64; 3], f64)> {
     // Find normal as eigenvector with smallest eigenvalue (power iteration on inverse)
     // Use simplified: try coordinate axes and pick the one with smallest variance
     let mut best_normal = [0.0, 0.0, 1.0];
-    let mut best_var = f64::MAX;
+    let best_var = f64::MAX;
 
     // Power iteration for smallest eigenvector of 3x3
     let normal = smallest_eigenvector_3x3(&cov);
@@ -107,7 +107,7 @@ pub fn fit_plane(points: &PolyData) -> Option<([f64; 3], f64)> {
     }).sum::<f64>() / n as f64;
 
     if var < best_var {
-        best_var = var;
+        let _ = var;
         best_normal = normal;
     }
 

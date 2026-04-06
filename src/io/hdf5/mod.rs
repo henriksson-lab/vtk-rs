@@ -1,3 +1,4 @@
+#![allow(unexpected_cfgs)]
 #[cfg(feature = "exodus")]
 pub mod exodus;
 #[cfg(feature = "cgns")]

@@ -2,7 +2,7 @@
 use crate::data::{CellArray, Points, PolyData};
 pub fn conveyor_with_rollers(length: f64, width: f64, roller_radius: f64, num_rollers: usize, resolution: usize) -> PolyData {
     let nr=num_rollers.max(2);let res=resolution.max(6);let hw=width/2.0;
-    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let mut lines=CellArray::new();
+    let mut pts=Points::<f64>::new();let mut polys=CellArray::new();let _lines=CellArray::new();
     // Belt (flat ribbon)
     let belt_h=roller_radius*1.1;
     let bb=pts.len();
