@@ -131,3 +131,7 @@ path = "examples/headless_render.rs"
 [[example]]
 name = "bench_filters"
 path = "benches/filters.rs"
+
+[[example]]
+name = "bench_large"
+path = "benches/bench_large.rs"

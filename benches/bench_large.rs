@@ -1,5 +1,4 @@
 use std::hint::black_box;
-
 use vtk_pure_rs::data::ImageData;
 use vtk_pure_rs::data::PolyData;
 use vtk_pure_rs::filters::core::sources::sphere::{sphere, SphereParams};
@@ -33,91 +32,63 @@ fn make_image_data(size: usize) -> (ImageData, Vec<f64>) {
 }
 
 fn main() {
-    println!("vtk-rs filter benchmarks");
-    println!("========================\n");
+    println!("vtk-rs LARGE filter benchmarks");
+    println!("==============================\n");
 
-    bench("sphere(16) generation", 100, || {
-        black_box(make_sphere(16));
+    let pd256 = make_sphere(256);
+    println!("  sphere(256) points: {}", pd256.points.len());
+
+    bench("normals (sphere 256)", 5, || {
+        black_box(vtk_pure_rs::filters::normals::normals::compute_normals(&pd256));
     });
 
-    bench("sphere(64) generation", 10, || {
-        black_box(make_sphere(64));
-    });
-
-    let pd16 = make_sphere(16);
-    let pd32 = make_sphere(32);
-    let pd64 = make_sphere(64);
-
-    bench("normals (sphere 16)", 100, || {
-        black_box(vtk_pure_rs::filters::normals::normals::compute_normals(&pd16));
-    });
-
-    bench("normals (sphere 64)", 10, || {
-        black_box(vtk_pure_rs::filters::normals::normals::compute_normals(&pd64));
-    });
-
-    bench("normals_par (sphere 64)", 10, || {
-        black_box(vtk_pure_rs::filters::normals::normals::compute_normals_par(&pd64));
-    });
-
-    bench("elevation (sphere 64)", 20, || {
+    bench("elevation (sphere 256)", 5, || {
         black_box(vtk_pure_rs::filters::geometry::elevation::elevation(
-            &pd64,
+            &pd256,
             [0.0, 0.0, -1.0],
             [0.0, 0.0, 1.0],
         ));
     });
 
-    bench("elevation_par (sphere 64)", 20, || {
-        black_box(vtk_pure_rs::filters::geometry::elevation::elevation_par(
-            &pd64,
-            [0.0, 0.0, -1.0],
-            [0.0, 0.0, 1.0],
-        ));
-    });
-
-    let (img32, scalars32) = make_image_data(32);
-    bench("marching_cubes (32^3)", 10, || {
+    let (img64, scalars64) = make_image_data(64);
+    bench("marching_cubes (64^3)", 5, || {
         black_box(vtk_pure_rs::filters::core::marching_cubes::marching_cubes(
-            &img32,
-            &scalars32,
+            &img64,
+            &scalars64,
             0.0,
         ));
     });
 
-    bench("triangulate (sphere 32)", 50, || {
-        black_box(vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd32));
+    let pd128 = make_sphere(128);
+    bench("triangulate (sphere 128)", 10, || {
+        black_box(vtk_pure_rs::filters::geometry::triangulate::triangulate(&pd128));
     });
 
-    bench("clean (sphere 32)", 20, || {
-        black_box(clean(&pd32, &CleanParams::default()));
+    bench("clean (sphere 128)", 5, || {
+        black_box(clean(&pd128, &CleanParams::default()));
     });
 
-    bench("decimate 50% (sphere 32)", 10, || {
-        black_box(vtk_pure_rs::filters::core::decimate::decimate(&pd32, 0.5));
+    bench("decimate 50% (sphere 128)", 5, || {
+        black_box(vtk_pure_rs::filters::core::decimate::decimate(&pd128, 0.5));
     });
 
-    bench("smooth 20 iters (sphere 32)", 10, || {
-        black_box(vtk_pure_rs::filters::smooth::smooth::smooth(&pd32, 20, 1.0, true));
+    bench("smooth 20 iters (sphere 128)", 5, || {
+        black_box(vtk_pure_rs::filters::smooth::smooth::smooth(&pd128, 20, 1.0, true));
     });
 }
 
 fn bench<F: FnMut()>(name: &str, iterations: u32, mut f: F) {
-    // Warm up
-    f();
-
+    f(); // warmup
     let start = std::time::Instant::now();
     for _ in 0..iterations {
         f();
     }
     let elapsed = start.elapsed();
     let per_iter = elapsed / iterations;
-
     let per_str = if per_iter.as_millis() > 0 {
         format!("{:.2} ms", per_iter.as_secs_f64() * 1000.0)
     } else {
         format!("{:.1} us", per_iter.as_secs_f64() * 1_000_000.0)
     };
-
     println!("  {:<35} {:>10} ({} iters)", name, per_str, iterations);
 }
